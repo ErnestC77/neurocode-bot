@@ -19,8 +19,7 @@ from aiogram.enums import ParseMode
 
 from config import Config, load_config
 from db.database import init_db, init_engine
-from handlers import (admin, book, consent, consult, menu, practicum, settings_admin,
-                      start, test, text_input)
+from handlers import admin, settings_admin, start, text_input
 from middlewares import ActivityMiddleware
 from scheduler import reminder_loop
 
@@ -37,17 +36,11 @@ def build_dispatcher(config: Config) -> Dispatcher:
     dp.message.middleware(ActivityMiddleware())
     dp.callback_query.middleware(ActivityMiddleware())
     dp.include_router(start.router)
-    dp.include_router(consent.router)
-    dp.include_router(test.router)
-    dp.include_router(menu.router)
-    dp.include_router(practicum.router)
-    dp.include_router(book.router)
-    dp.include_router(consult.router)
     dp.include_router(admin.router)
     dp.include_router(settings_admin.router)
     # text_input.router — последним: единственный catch-all для свободного
-    # текста (email консультации + значения настроек), иначе он перехватил бы
-    # команды/сообщения, предназначенные другим роутерам.
+    # текста (значения настроек), иначе он перехватил бы команды/сообщения,
+    # предназначенные другим роутерам.
     dp.include_router(text_input.router)
     return dp
 
