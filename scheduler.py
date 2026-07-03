@@ -12,12 +12,11 @@ import logging
 from datetime import timedelta
 
 from aiogram import Bot
-from aiogram.types import InlineKeyboardMarkup
 
 from config import Config
 from db import crud
 from exports.notifier import retry_unexported_leads
-from keyboards.inline import next_kb, reminder_cta_kb
+from keyboards.inline import open_miniapp_kb
 from payments import delivery
 from services import checkpoints, settings
 from services.catalog import BOOK, PRACTICUM
@@ -32,22 +31,12 @@ _CANCEL_CHECK = {
     checkpoints.BOOK_VIEWED: lambda tg_id: crud.has_paid(tg_id, BOOK),
 }
 
-# Кнопки напоминаний — ровно как в Блоке 10 ТЗ: у каждого R-кода своя (короткая)
-# метка и callback, который ведёт СРАЗУ к действию, а не переоткрывает intro-экран
-# продукта (R4/R5/R6) или молча теряет текст вопроса (R2).
-_REMINDER_KB = {
-    "R1": lambda: next_kb("Продолжить", "welcome:4"),          # → повторно показать M1.1
-    "R2": lambda: next_kb("Ответить", "test:resume"),          # → повторно показать вопрос
-    "R3": lambda: next_kb("Какой шаг дальше?", "result:next"),  # → M5.*
-    "R4": lambda: reminder_cta_kb("Купить практикум", "practicum:buy"),
-    "R5": lambda: reminder_cta_kb("Записаться", "consult:book"),
-    "R6": lambda: reminder_cta_kb("Купить книгу", "book:buy"),
-}
 
-
-def _reminder_keyboard(code: str) -> InlineKeyboardMarkup | None:
-    builder = _REMINDER_KB.get(code)
-    return builder() if builder else None
+def _reminder_keyboard(config: Config) -> InlineKeyboardMarkup:
+    """Одна и та же кнопка для всех R1-R6 — открывает Mini App, который сам
+    покажет нужный экран по чекпоинту пользователя (раньше у каждого R-кода
+    была своя callback-кнопка в конкретный чат-хендлер — теперь их нет)."""
+    return open_miniapp_kb(config.webhook_base_url)
 
 
 async def process_reminders(bot: Bot, config: Config) -> int:
@@ -64,8 +53,7 @@ async def process_reminders(bot: Bot, config: Config) -> int:
             continue  # уже отправлено (гонка между тиками) — пропускаем
 
         try:
-            kb = _reminder_keyboard(code)
-            await bot.send_message(user.tg_id, TEXTS[code], reply_markup=kb)
+            await bot.send_message(user.tg_id, TEXTS[code], reply_markup=_reminder_keyboard(config))
             sent += 1
         except Exception:  # noqa: BLE001
             logger.exception("Не удалось отправить напоминание %s user=%s", code, user.tg_id)

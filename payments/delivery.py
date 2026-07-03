@@ -50,7 +50,7 @@ async def _deliver_practicum(bot: Bot, config: Config, purchase: Purchase) -> bo
     available = await get_available_products(purchase.user_tg_id)
     text = TEXTS["M6.3"].format(invite_link=link.invite_link)
     await bot.send_message(purchase.user_tg_id, text,
-                           reply_markup=after_product_kb(PRACTICUM, available))
+                           reply_markup=after_product_kb(PRACTICUM, available, config.webhook_base_url))
 
     workbook_file_id = await settings.get_str("practicum_workbook_file_id")
     if workbook_file_id:
@@ -86,7 +86,7 @@ async def _deliver_practicum(bot: Bot, config: Config, purchase: Purchase) -> bo
 async def _deliver_book(bot: Bot, config: Config, purchase: Purchase) -> bool:
     available = await get_available_products(purchase.user_tg_id)
     await bot.send_message(purchase.user_tg_id, TEXTS["M8.3"],
-                           reply_markup=after_product_kb(BOOK, available))
+                           reply_markup=after_product_kb(BOOK, available, config.webhook_base_url))
     book_file_id = await settings.get_str("book_file_id")
     if not book_file_id:
         logger.error("book_file_id не задан в /settings, не могу отправить файл purchase=%s",
