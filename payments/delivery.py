@@ -9,7 +9,7 @@ from config import Config
 from db import crud
 from db.models import Purchase
 from keyboards.inline import after_product_kb
-from services import checkpoints
+from services import checkpoints, settings
 from services.catalog import BOOK, PRACTICUM, get_available_products
 from texts.messages import TEXTS
 
@@ -32,9 +32,10 @@ async def deliver(bot: Bot, config: Config, purchase: Purchase) -> None:
 
 
 async def _deliver_practicum(bot: Bot, config: Config, purchase: Purchase) -> None:
-    chat_id = config.practicum_chat_id
+    chat_id = await settings.get_practicum_chat_id()
     if not chat_id:
-        logger.error("PRACTICUM_CHANNEL_ID не задан, не могу выдать доступ purchase=%s", purchase.id)
+        logger.error("practicum_channel_id не задан в /settings, не могу выдать доступ purchase=%s",
+                     purchase.id)
         return
     link = await bot.create_chat_invite_link(
         chat_id, member_limit=1, name=f"practicum-{purchase.user_tg_id}"[:32],
@@ -49,7 +50,9 @@ async def _deliver_book(bot: Bot, config: Config, purchase: Purchase) -> None:
     available = await get_available_products(purchase.user_tg_id)
     await bot.send_message(purchase.user_tg_id, TEXTS["M8.3"],
                            reply_markup=after_product_kb(BOOK, available))
-    if config.book_file_id:
-        await bot.send_document(purchase.user_tg_id, config.book_file_id, protect_content=True)
+    book_file_id = await settings.get_str("book_file_id")
+    if book_file_id:
+        await bot.send_document(purchase.user_tg_id, book_file_id, protect_content=True)
     else:
-        logger.error("BOOK_FILE_ID не задан, не могу отправить файл purchase=%s", purchase.id)
+        logger.error("book_file_id не задан в /settings, не могу отправить файл purchase=%s",
+                     purchase.id)

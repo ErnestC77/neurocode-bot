@@ -40,7 +40,7 @@ async def open_product(callback: CallbackQuery) -> None:
         if not available:
             await callback.message.answer(TEXTS["M9_EMPTY"])
         else:
-            await callback.message.answer(TEXTS["M9"], reply_markup=smart_menu_kb(available))
+            await callback.message.answer(TEXTS["M9"], reply_markup=await smart_menu_kb(available))
         return
 
     await crud.set_checkpoint(tg_id, _PRODUCT_CHECKPOINT[product])
@@ -57,4 +57,4 @@ async def show_menu(callback: CallbackQuery) -> None:
     if not available:
         await callback.message.answer(TEXTS["M9_EMPTY"])
         return
-    await callback.message.answer(TEXTS["M9"], reply_markup=smart_menu_kb(available))
+    await callback.message.answer(TEXTS["M9"], reply_markup=await smart_menu_kb(available))

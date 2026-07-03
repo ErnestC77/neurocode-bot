@@ -8,7 +8,6 @@ PRACTICUM = "practicum"
 CONSULT = "consult"
 
 ALL_PRODUCTS = (BOOK, PRACTICUM, CONSULT)
-PRODUCT_PRICE_RUB = {BOOK: 990, PRACTICUM: 2990}  # консультация бесплатна
 
 
 async def get_available_products(tg_id: int) -> list[str]:

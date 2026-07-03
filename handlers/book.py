@@ -8,7 +8,8 @@ from config import Config
 from db import crud
 from keyboards.inline import book_buy_kb, payment_link_kb
 from payments.yookassa_client import create_payment
-from services.catalog import BOOK, PRODUCT_PRICE_RUB, get_available_products
+from services import settings
+from services.catalog import BOOK, get_available_products
 from texts.messages import TEXTS
 
 router = Router()
@@ -19,7 +20,7 @@ async def book_details(callback: CallbackQuery) -> None:
     tg_id = callback.from_user.id
     await callback.answer()
     available = await get_available_products(tg_id)
-    await callback.message.answer(TEXTS["M8.2"], reply_markup=book_buy_kb(available))
+    await callback.message.answer(TEXTS["M8.2"], reply_markup=await book_buy_kb(available))
 
 
 @router.callback_query(F.data == "book:buy")
@@ -27,10 +28,10 @@ async def book_buy(callback: CallbackQuery, config: Config) -> None:
     tg_id = callback.from_user.id
     await callback.answer()
 
-    amount = PRODUCT_PRICE_RUB[BOOK]
+    amount = await settings.get_int("book_price_rub")
     purchase = await crud.create_purchase(tg_id, BOOK, amount)
     payment_id, confirmation_url = await create_payment(
-        shop_id=config.yookassa_shop_id, secret_key=config.yookassa_secret_key,
+        shop_id=await settings.get_str("yookassa_shop_id"), secret_key=config.yookassa_secret_key,
         amount_rub=amount, description="Книга «Целеполагание»",
         idempotence_key=str(purchase.id), return_url=config.webhook_base_url,
         metadata={"tg_id": tg_id, "product": BOOK, "purchase_id": purchase.id},

@@ -3,14 +3,9 @@ from __future__ import annotations
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from services.catalog import BOOK, CONSULT, PRACTICUM, PRODUCT_PRICE_RUB
+from services import settings
+from services.catalog import BOOK, CONSULT, PRACTICUM
 
-# Полные названия — для Блока 5 и «умного меню» M9.
-_MENU_LABELS = {
-    BOOK: f"Книга «Целеполагание» — {PRODUCT_PRICE_RUB[BOOK]} ₽",
-    PRACTICUM: f"Практикум «Найди свой код» — {PRODUCT_PRICE_RUB[PRACTICUM]} ₽",
-    CONSULT: "Бесплатная консультация с Марией",
-}
 # Кросс-ссылки на экранах M6.1/M7.1/M8.1 («А что за…»).
 _QUESTION_LABELS = {
     BOOK: "А что за книга?",
@@ -60,9 +55,20 @@ def result_next_kb() -> InlineKeyboardMarkup:
                                      callback_data="result:next")])
 
 
-def offer_kb(available: list[str]) -> InlineKeyboardMarkup:
+async def _menu_labels() -> dict[str, str]:
+    book_price = await settings.get_int("book_price_rub")
+    practicum_price = await settings.get_int("practicum_price_rub")
+    return {
+        BOOK: f"Книга «Целеполагание» — {book_price} ₽",
+        PRACTICUM: f"Практикум «Найди свой код» — {practicum_price} ₽",
+        CONSULT: "Бесплатная консультация с Марией",
+    }
+
+
+async def offer_kb(available: list[str]) -> InlineKeyboardMarkup:
     """Блок 5: до трёх кнопок продуктов (уже купленные/забронированные скрыты)."""
-    rows = [[InlineKeyboardButton(text=_MENU_LABELS[p], callback_data=f"offer:{p}")]
+    labels = await _menu_labels()
+    rows = [[InlineKeyboardButton(text=labels[p], callback_data=f"offer:{p}")]
             for p in available]
     return _kb(*rows)
 
@@ -74,9 +80,9 @@ def practicum_intro_kb(available: list[str]) -> InlineKeyboardMarkup:
     return _kb(*rows)
 
 
-def practicum_buy_kb(available: list[str]) -> InlineKeyboardMarkup:
+async def practicum_buy_kb(available: list[str]) -> InlineKeyboardMarkup:
     """M6.2: кнопка покупки + кросс-ссылки."""
-    price = PRODUCT_PRICE_RUB[PRACTICUM]
+    price = await settings.get_int("practicum_price_rub")
     rows = [[InlineKeyboardButton(text=f"Купить практикум за {price} ₽",
                                   callback_data="practicum:buy")]]
     rows += _other_products_rows(PRACTICUM, available, _QUESTION_LABELS)
@@ -89,8 +95,8 @@ def book_intro_kb(available: list[str]) -> InlineKeyboardMarkup:
     return _kb(*rows)
 
 
-def book_buy_kb(available: list[str]) -> InlineKeyboardMarkup:
-    price = PRODUCT_PRICE_RUB[BOOK]
+async def book_buy_kb(available: list[str]) -> InlineKeyboardMarkup:
+    price = await settings.get_int("book_price_rub")
     rows = [[InlineKeyboardButton(text=f"Купить книгу за {price} ₽", callback_data="book:buy")]]
     rows += _other_products_rows(BOOK, available, _QUESTION_LABELS)
     return _kb(*rows)
@@ -120,9 +126,10 @@ def after_product_kb(current: str, available: list[str]) -> InlineKeyboardMarkup
     return _kb(*rows) if rows else _kb()
 
 
-def smart_menu_kb(available: list[str]) -> InlineKeyboardMarkup:
+async def smart_menu_kb(available: list[str]) -> InlineKeyboardMarkup:
     """M9: показывает только то, что ещё не куплено/не забронировано."""
-    rows = [[InlineKeyboardButton(text=_MENU_LABELS[p], callback_data=f"offer:{p}")]
+    labels = await _menu_labels()
+    rows = [[InlineKeyboardButton(text=labels[p], callback_data=f"offer:{p}")]
             for p in available]
     return _kb(*rows)
 

@@ -11,6 +11,7 @@ from db import crud
 from exports.notifier import notify_payment
 from payments import delivery
 from payments.yookassa_client import get_payment
+from services import settings
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,8 @@ def make_webhook_handler(bot: Bot, config: Config):
         # перечитываем платёж по API и статус берём только из ответа.
         try:
             remote = await get_payment(
-                shop_id=config.yookassa_shop_id, secret_key=config.yookassa_secret_key,
+                shop_id=await settings.get_str("yookassa_shop_id"),
+                secret_key=config.yookassa_secret_key,
                 payment_id=payment_id,
             )
         except Exception:  # noqa: BLE001

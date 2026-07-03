@@ -74,4 +74,4 @@ async def show_offer(callback: CallbackQuery) -> None:
         await callback.message.answer(TEXTS["M9_EMPTY"])
         return
     await callback.message.answer(TEXTS[_OFFER_TEXT_KEY[user.result_type]],
-                                  reply_markup=offer_kb(available))
+                                  reply_markup=await offer_kb(available))
