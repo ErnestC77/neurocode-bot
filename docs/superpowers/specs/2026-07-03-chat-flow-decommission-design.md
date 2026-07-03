@@ -43,9 +43,17 @@ Bot уже настроен с постоянной Menu Button (`MenuButtonWebA
 Меняется только клавиатура: `_REMINDER_KB` (6 разных builder'ов с callback-кнопками в удалённые хендлеры) заменяется одной общей клавиатурой `open_miniapp_kb(url)` — единственная кнопка «Открыть» с `web_app=WebAppInfo(url=...)`, открывающая Mini App напрямую. Mini App сам покажет нужный экран по вернувшемуся чекпоинту (`resolveScreen` уже это делает для всех шести чекпоинтов, задействованных в R1-R6) — так что единая кнопка для всех шести кодов корректна и ничего не теряет по сравнению со старыми специфичными кнопками.
 
 ### `keyboards/inline.py`
-Удаляются билдеры, используемые только удаляемыми хендлерами: `next_kb`, `consent_kb`, `question_kb`, `result_next_kb`, `offer_kb`, `practicum_intro_kb`, `practicum_buy_kb`, `book_intro_kb`, `book_buy_kb`, `consult_intro_kb`, `smart_menu_kb`, `retake_kb`, `reminder_cta_kb`, приватные хелперы `_QUESTION_LABELS` и `_menu_labels` (использовались только удаляемыми билдерами выше).
+Удаляются билдеры, используемые только удаляемыми хендлерами: `next_kb`, `consent_kb`, `question_kb`, `result_next_kb`, `offer_kb`, `practicum_intro_kb`, `practicum_buy_kb`, `book_intro_kb`, `book_buy_kb`, `consult_intro_kb`, `smart_menu_kb`, `retake_kb`, `reminder_cta_kb`, приватные хелперы `_QUESTION_LABELS` и `_menu_labels`.
 
-**Остаются без изменений**: `_kb` (общий хелпер), `_other_products_rows` и `_AFTER_LABELS` (используются оставшимся `after_product_kb`), `payment_link_kb` (используется `payments/delivery.py` для ссылки на видео практикума), `after_product_kb` (используется `payments/delivery.py` для кросс-ссылок после выдачи доступа).
+**`after_product_kb` — сигнатура меняется, не просто остаётся.** Сейчас она строит персональные кросс-ссылки вида «Посмотреть практикум» с `callback_data=f"offer:{p}"` — этот callback обрабатывал `handlers/menu.py::open_product`, который тоже удаляется. Оставить эти кнопки как есть — значит после деплоя в сообщении о выдаче доступа (`payments/delivery.py`, шлётся независимо от интерфейса покупки) будет мёртвая кнопка. Новая версия: если есть ещё непроданные продукты — одна кнопка «Посмотреть другие варианты» (`web_app`, открывает Mini App — там актуальное умное меню M9); если непроданного не осталось — пустая клавиатура, как и сейчас. Сигнатура получает третий параметр `miniapp_url: str`:
+```python
+def after_product_kb(current: str, available: list[str], miniapp_url: str) -> InlineKeyboardMarkup
+```
+Из-за этого `_other_products_rows` и `_AFTER_LABELS` (использовались только старой версией `after_product_kb` и уже удаляемыми билдерами) тоже удаляются — больше нет персональных лейблов на продукт, только один общий текст кнопки.
+
+**Остаются без изменений**: `_kb` (общий хелпер), `payment_link_kb` (используется `payments/delivery.py` для ссылки на видео практикума).
+
+**`payments/delivery.py`** — оба места, где сейчас вызывается `after_product_kb(product, available)`, обновляются до `after_product_kb(product, available, config.webhook_base_url)` (`config` там уже есть параметром функции).
 
 **Добавляется**: `open_miniapp_kb(url: str) -> InlineKeyboardMarkup` — одна кнопка `web_app=WebAppInfo(url=url)`, текст «Открыть».
 
@@ -60,7 +68,7 @@ Bot уже настроен с постоянной Menu Button (`MenuButtonWebA
 
 - `handlers/admin.py` (`/export_leads`, `/redeliver`, `get_file_id`, `get_forwarded_chat_id`) — без изменений.
 - `handlers/settings_admin.py` (`/settings`) — без изменений.
-- `payments/` (`webhook.py`, `delivery.py`, `yookassa_client.py`) — без изменений в логике; продолжает читать/писать те же чекпоинты и те же `TEXTS["M6.3"]`/`TEXTS["M8.3"]`.
+- `payments/` (`webhook.py`, `delivery.py`, `yookassa_client.py`) — без изменений в бизнес-логике; продолжает читать/писать те же чекпоинты и те же `TEXTS["M6.3"]`/`TEXTS["M8.3"]`. Единственная правка — два call site `after_product_kb(...)` в `delivery.py` (см. выше, из-за смены сигнатуры).
 - `services/checkpoints.py`, `services/catalog.py`, `services/scoring.py`, `services/settings.py`, `services/validation.py` — без изменений (используются Mini App API как есть).
 - `middlewares.py::ActivityMiddleware` — без изменений, продолжает работать для оставшихся команд.
 - `api/routers/funnel.py` и весь frontend — без изменений, уже полностью самодостаточны.
