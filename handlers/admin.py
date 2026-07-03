@@ -11,6 +11,7 @@ from aiogram.types import BufferedInputFile, Message
 
 from config import Config
 from db import crud
+from payments import delivery
 from services.settings import is_authorized_admin
 
 router = Router()
@@ -22,6 +23,38 @@ async def get_file_id(message: Message, config: Config) -> None:
     if not await is_authorized_admin(message.from_user.id, config):
         return
     await message.reply(f"file_id: <code>{message.document.file_id}</code>")
+
+
+@router.message(F.forward_from_chat)
+async def get_forwarded_chat_id(message: Message, config: Config) -> None:
+    """Владелец пересылает любое сообщение из канала — бот отвечает его chat_id
+    (для practicum_channel_id в /settings). Нужно для приватных каналов без
+    @username, у которых есть только инвайт-ссылка — из неё ID не получить
+    напрямую, а пересланное сообщение содержит настоящий числовой ID."""
+    if not await is_authorized_admin(message.from_user.id, config):
+        return
+    chat = message.forward_from_chat
+    await message.reply(f"chat_id: <code>{chat.id}</code> ({chat.title})")
+
+
+@router.message(Command("redeliver"))
+async def redeliver_purchase(message: Message, config: Config) -> None:
+    """Повторно запускает выдачу доступа для конкретной оплаченной покупки —
+    на случай, если она уже помечена доставленной, но настройка (channel_id/
+    file_id) была не заполнена в момент выдачи, и автоматический ретрай
+    scheduler'а её больше не подхватит."""
+    if not await is_authorized_admin(message.from_user.id, config):
+        return
+    parts = (message.text or "").split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await message.reply("Использование: /redeliver <purchase_id>")
+        return
+    purchase = await crud.get_purchase(int(parts[1]))
+    if purchase is None or purchase.status != "paid":
+        await message.reply("Оплаченная покупка с таким id не найдена.")
+        return
+    await delivery.deliver(message.bot, config, purchase)
+    await message.reply("Готово. Если настройки заполнены — доступ должен был уйти.")
 
 
 @router.message(Command("export_leads"))

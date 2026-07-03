@@ -19,11 +19,17 @@ logger = logging.getLogger(__name__)
 
 async def deliver(bot: Bot, config: Config, purchase: Purchase) -> None:
     if purchase.product == PRACTICUM:
-        await _deliver_practicum(bot, config, purchase)
+        delivered = await _deliver_practicum(bot, config, purchase)
     elif purchase.product == BOOK:
-        await _deliver_book(bot, config, purchase)
+        delivered = await _deliver_book(bot, config, purchase)
     else:
         logger.error("Неизвестный продукт %s, purchase=%s", purchase.product, purchase.id)
+        return
+    if not delivered:
+        # Ядро продукта (инвайт/файл) не ушло из-за незаполненной настройки — НЕ
+        # помечаем доставленным, иначе process_undelivered_purchases (scheduler.py)
+        # больше никогда не подхватит эту покупку на ретрай, даже после того как
+        # настройку заполнят.
         return
     await crud.mark_delivered(purchase.id)
     # Чекпоинт мог всё ещё указывать на "смотрит продукт" (practicum_viewed/book_viewed) —
@@ -32,12 +38,12 @@ async def deliver(bot: Bot, config: Config, purchase: Purchase) -> None:
     await crud.set_checkpoint(purchase.user_tg_id, checkpoints.IDLE)
 
 
-async def _deliver_practicum(bot: Bot, config: Config, purchase: Purchase) -> None:
+async def _deliver_practicum(bot: Bot, config: Config, purchase: Purchase) -> bool:
     chat_id = await settings.get_practicum_chat_id()
     if not chat_id:
         logger.error("practicum_channel_id не задан в /settings, не могу выдать доступ purchase=%s",
                      purchase.id)
-        return
+        return False
     link = await bot.create_chat_invite_link(
         chat_id, member_limit=1, name=f"practicum-{purchase.user_tg_id}"[:32],
     )
@@ -74,14 +80,17 @@ async def _deliver_practicum(bot: Bot, config: Config, purchase: Purchase) -> No
             purchase.id,
         )
 
+    return True
 
-async def _deliver_book(bot: Bot, config: Config, purchase: Purchase) -> None:
+
+async def _deliver_book(bot: Bot, config: Config, purchase: Purchase) -> bool:
     available = await get_available_products(purchase.user_tg_id)
     await bot.send_message(purchase.user_tg_id, TEXTS["M8.3"],
                            reply_markup=after_product_kb(BOOK, available))
     book_file_id = await settings.get_str("book_file_id")
-    if book_file_id:
-        await bot.send_document(purchase.user_tg_id, book_file_id, protect_content=True)
-    else:
+    if not book_file_id:
         logger.error("book_file_id не задан в /settings, не могу отправить файл purchase=%s",
                      purchase.id)
+        return False
+    await bot.send_document(purchase.user_tg_id, book_file_id, protect_content=True)
+    return True
