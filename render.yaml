@@ -7,6 +7,11 @@
 #    long-polling бота при этом остановится. Для рабочего бота нужен план
 #    starter (или выше).
 #  - PostgreSQL на плане free удаляется через 90 дней. Для продакшена — платный план.
+#
+# NODE-НА-RENDER РИСК: сборка вызывает npm для компиляции фронтенда. Python-
+# рантайм Render обычно включает Node, но это не гарантировано. Если сборка
+# упадёт на `npm: command not found` — переключить сервис на Dockerfile-деплой
+# (см. аналогичный кейс в C:\Users\mccaq\IdeaProjects\barbershop-bot\DEPLOY.md).
 
 databases:
   - name: neurocode-bot-db
@@ -21,8 +26,8 @@ services:
     runtime: python
     plan: free                 # ВНИМАНИЕ: уснёт после ~15 мин без запросов и остановит polling
     region: frankfurt
-    buildCommand: pip install -r requirements.txt
-    startCommand: python bot.py
+    buildCommand: pip install -r requirements.txt && cd frontend && npm ci && npm run build
+    startCommand: uvicorn asgi:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     autoDeploy: true
     envVars:
