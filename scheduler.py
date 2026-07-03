@@ -92,11 +92,12 @@ async def process_undelivered_purchases(bot: Bot, config: Config) -> int:
 async def reminder_loop(bot: Bot, config: Config) -> None:
     logger.info("Планировщик запущен")
     while True:
+        interval = 300
         try:
             await process_reminders(bot, config)
             await process_undelivered_purchases(bot, config)
             await retry_unexported_leads(bot, config)
+            interval = await settings.get_int("reminder_check_interval")
         except Exception:  # noqa: BLE001
             logger.exception("Ошибка в цикле планировщика")
-        interval = await settings.get_int("reminder_check_interval")
         await asyncio.sleep(interval)
