@@ -12,6 +12,7 @@ import logging
 from datetime import timedelta
 
 from aiogram import Bot
+from aiogram.types import InlineKeyboardMarkup
 
 from config import Config
 from db import crud
