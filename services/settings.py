@@ -24,6 +24,7 @@ class SettingSpec:
     value_type: type  # int | str
     default: str
     suffix: str = ""  # добавляется к значению при отображении в /settings
+    min_value: int | None = None  # нижняя граница для int-настроек (None = без ограничения)
 
 
 SETTINGS: dict[str, SettingSpec] = {
@@ -38,7 +39,8 @@ SETTINGS: dict[str, SettingSpec] = {
     "reminder_delay_hours": SettingSpec(
         "reminder_delay_hours", "⏰ Порог бездействия для напоминаний", int, "24", suffix=" ч"),
     "reminder_check_interval": SettingSpec(
-        "reminder_check_interval", "🔁 Интервал проверки scheduler'а", int, "300", suffix=" с"),
+        "reminder_check_interval", "🔁 Интервал проверки scheduler'а", int, "300", suffix=" с",
+        min_value=10),
     "owner_chat_id": SettingSpec(
         "owner_chat_id", "👤 Доп. владелец (лиды/оплаты/доступ к панели)", int, ""),
     "yookassa_shop_id": SettingSpec(
@@ -52,7 +54,12 @@ def cast_value(spec: SettingSpec, raw: str) -> str:
     if not raw:
         raise ValueError("значение не может быть пустым")
     if spec.value_type is int:
-        int(raw)  # бросит ValueError, если не число
+        try:
+            parsed = int(raw)
+        except ValueError:
+            raise ValueError("значение должно быть целым числом") from None
+        if spec.min_value is not None and parsed < spec.min_value:
+            raise ValueError(f"значение должно быть не меньше {spec.min_value}")
     return raw
 
 

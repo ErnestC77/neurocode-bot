@@ -31,6 +31,24 @@ def test_cast_value_str_ok():
     assert cast_value(SETTINGS["practicum_channel_id"], "@mychannel") == "@mychannel"
 
 
+def test_cast_value_below_min_value_rejected():
+    with pytest.raises(ValueError):
+        cast_value(SETTINGS["reminder_check_interval"], "5")
+
+
+def test_cast_value_negative_below_min_value_rejected():
+    with pytest.raises(ValueError):
+        cast_value(SETTINGS["reminder_check_interval"], "-1")
+
+
+def test_cast_value_at_min_value_ok():
+    assert cast_value(SETTINGS["reminder_check_interval"], "10") == "10"
+
+
+def test_cast_value_above_min_value_ok():
+    assert cast_value(SETTINGS["reminder_check_interval"], "300") == "300"
+
+
 def test_format_value_uses_default_when_unset():
     assert format_value(SETTINGS["book_price_rub"], None) == "990 ₽"
 

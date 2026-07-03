@@ -58,7 +58,10 @@ async def edit_setting(callback: CallbackQuery, config: Config) -> None:
 
 
 @router.callback_query(F.data == "settings:cancel")
-async def cancel_edit(callback: CallbackQuery) -> None:
+async def cancel_edit(callback: CallbackQuery, config: Config) -> None:
+    if not await is_authorized_admin(callback.from_user.id, config):
+        await callback.answer()
+        return
     await callback.answer()
     await crud.clear_pending_setting_edit(callback.from_user.id)
     await callback.message.answer("Отменено.", reply_markup=await _menu_kb())
@@ -75,9 +78,8 @@ async def handle_setting_input(message: Message, config: Config, setting_key: st
     old_display = format_value(spec, await crud.get_setting_value(setting_key))
     try:
         normalized = cast_value(spec, raw_input)
-    except ValueError:
-        hint = "Пришли целое число." if spec.value_type is int else "Значение не должно быть пустым."
-        await message.answer(f"Не получилось разобрать значение. {hint}")
+    except ValueError as exc:
+        await message.answer(f"Не получилось разобрать значение: {exc}.")
         return
 
     await crud.set_setting_value(setting_key, normalized)
