@@ -54,3 +54,23 @@ async def _build_state(tg_id: int) -> FunnelStateOut:
 @router.get("/state")
 async def get_state(tg_id: int = Depends(current_client)) -> FunnelStateOut:
     return await _build_state(tg_id)
+
+
+@router.post("/welcome/complete")
+async def complete_welcome(tg_id: int = Depends(current_client)) -> FunnelStateOut:
+    await crud.set_checkpoint(tg_id, checkpoints.AWAITING_CONSENT)
+    return await _build_state(tg_id)
+
+
+@router.post("/consent")
+async def accept_consent(tg_id: int = Depends(current_client)) -> FunnelStateOut:
+    await crud.set_consent(tg_id)
+    await crud.set_checkpoint(tg_id, checkpoints.IN_TEST)
+    return await _build_state(tg_id)
+
+
+@router.post("/retake")
+async def retake(tg_id: int = Depends(current_client)) -> FunnelStateOut:
+    await crud.reset_test(tg_id)
+    await crud.set_checkpoint(tg_id, checkpoints.IN_TEST)
+    return await _build_state(tg_id)

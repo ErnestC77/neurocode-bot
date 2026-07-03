@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.app import create_app
@@ -33,3 +34,37 @@ def test_state_defaults_for_new_user():
         "book_price_rub": 990,
         "practicum_price_rub": 2990,
     }
+
+
+def test_welcome_complete_sets_awaiting_consent():
+    client, headers = _client(702)
+    with client:
+        response = client.post("/api/funnel/welcome/complete", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["checkpoint"] == "awaiting_consent"
+
+
+def test_consent_sets_consent_given_and_in_test():
+    client, headers = _client(703)
+    with client:
+        response = client.post("/api/funnel/consent", headers=headers)
+    body = response.json()
+    assert body["checkpoint"] == "in_test"
+    assert body["consent_given"] is True
+
+
+@pytest.mark.skip(reason="POST /api/funnel/answers появится в Task 3")
+def test_retake_resets_answers_and_checkpoint():
+    client, headers = _client(704)
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        for q in range(1, 8):
+            client.post("/api/funnel/answers", headers=headers, json={"question_no": q, "score": 2})
+        before = client.get("/api/funnel/state", headers=headers).json()
+        assert before["result_type"] is not None
+
+        response = client.post("/api/funnel/retake", headers=headers)
+    body = response.json()
+    assert body["checkpoint"] == "in_test"
+    assert body["result_type"] is None
+    assert body["answers"] == []
