@@ -55,6 +55,14 @@ def test_parse_chat_id_username_stays_str():
     assert _parse_chat_id("@mychannel") == "@mychannel"
 
 
+def test_parse_chat_id_double_dash_stays_str():
+    # "--123" не парсится int() (несколько знаков), но lstrip("-").isdigit()
+    # ложно считал его валидным -> int("--123") падал с ValueError.
+    # Как и любая другая не-число строка (см. test_parse_chat_id_username_stays_str),
+    # это не valid plain chat id -> возвращаем как есть.
+    assert _parse_chat_id("--123") == "--123"
+
+
 def test_resolve_owner_chat_id_prefers_db():
     assert _resolve_owner_chat_id("456", env_owner_chat_id=123) == 456
 
@@ -71,6 +79,12 @@ def test_resolve_owner_chat_id_falls_back_to_env_when_corrupted():
 
 def test_resolve_owner_chat_id_none_env_and_empty_db():
     assert _resolve_owner_chat_id("", env_owner_chat_id=None) is None
+
+
+def test_resolve_owner_chat_id_falls_back_to_env_when_double_dash():
+    # "--123" проходит lstrip("-").isdigit(), но int("--123") бросает
+    # ValueError -> должен откатываться на env, а не падать.
+    assert _resolve_owner_chat_id("--123", env_owner_chat_id=123) == 123
 
 
 import pytest_asyncio

@@ -69,9 +69,10 @@ def _parse_chat_id(raw: str) -> int | str | None:
     raw = raw.strip()
     if not raw:
         return None
-    if raw.lstrip("-").isdigit():
+    try:
         return int(raw)
-    return raw
+    except ValueError:
+        return raw
 
 
 def _resolve_owner_chat_id(db_raw: str, env_owner_chat_id: int | None) -> int | None:
@@ -81,9 +82,10 @@ def _resolve_owner_chat_id(db_raw: str, env_owner_chat_id: int | None) -> int | 
     /settings не может лишить владельца доступа к самой панели.
     """
     db_raw = db_raw.strip()
-    if db_raw.lstrip("-").isdigit():
+    try:
         return int(db_raw)
-    return env_owner_chat_id
+    except ValueError:
+        return env_owner_chat_id
 
 
 from config import Config
