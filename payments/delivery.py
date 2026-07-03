@@ -1,4 +1,5 @@
-"""Выдача доступа после успешной оплаты: инвайт в канал (практикум) / файл (книга)."""
+"""Выдача доступа после успешной оплаты: инвайт в канал, PDF-тетрадь и видео
+(практикум) / файл (книга)."""
 from __future__ import annotations
 
 import logging
@@ -54,6 +55,9 @@ async def _deliver_practicum(bot: Bot, config: Config, purchase: Purchase) -> No
             purchase.id,
         )
 
+    # file_id приоритетен над url: как только видео будет загружено в self-hosted
+    # Bot API (снимает лимит 50 МБ облачного API) и file_id вписан в /settings,
+    # доставка сама переключится с ссылки на нативный файл — без правок кода.
     video_file_id = await settings.get_str("practicum_video_file_id")
     video_url = await settings.get_str("practicum_video_url")
     if video_file_id:
