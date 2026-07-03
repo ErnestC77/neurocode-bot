@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type FunnelState } from "@/api/client";
 import { BUY_BUTTON_LABEL, PRODUCT_DETAIL_TEXTS } from "@/content/texts";
 import { openLink } from "@/lib/telegram";
@@ -16,20 +16,33 @@ const POLL_TIMEOUT_MS = 120000;
 
 export default function ProductDetail({ product, price, onPaymentSettled }: Props) {
   const [waiting, setWaiting] = useState(false);
+  const [buying, setBuying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Guards against the auto-poll effect and handleManualCheck both detecting
+  // settlement and firing onPaymentSettled for the same purchase.
+  const settledRef = useRef(false);
+
+  // Keeps the polling effect's dependency array free of onPaymentSettled, so
+  // an unmemoized callback identity from the parent can't reset the deadline.
+  const onPaymentSettledRef = useRef(onPaymentSettled);
+  useEffect(() => {
+    onPaymentSettledRef.current = onPaymentSettled;
+  }, [onPaymentSettled]);
 
   useEffect(() => {
     if (!waiting) return;
 
-    let stopped = false;
+    settledRef.current = false;
     const deadline = Date.now() + POLL_TIMEOUT_MS;
 
     async function check() {
       const state = await api.getFunnelState();
-      if (stopped) return;
+      if (settledRef.current) return;
       if (state.checkpoint !== `${product}_viewed`) {
-        stopped = true;
-        onPaymentSettled(state);
+        settledRef.current = true;
+        clearInterval(interval);
+        onPaymentSettledRef.current(state);
       }
     }
 
@@ -47,13 +60,15 @@ export default function ProductDetail({ product, price, onPaymentSettled }: Prop
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
-      stopped = true;
+      settledRef.current = true;
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [waiting, product, onPaymentSettled]);
+  }, [waiting, product]);
 
   async function handleBuy() {
+    if (buying) return;
+    setBuying(true);
     setError(null);
     try {
       const { confirmation_url } = await api.buyProduct(product);
@@ -61,12 +76,19 @@ export default function ProductDetail({ product, price, onPaymentSettled }: Prop
       setWaiting(true);
     } catch {
       setError("Не получилось открыть оплату. Попробуй ещё раз.");
+    } finally {
+      setBuying(false);
     }
   }
 
   async function handleManualCheck() {
+    if (settledRef.current) return;
     const state = await api.getFunnelState();
-    if (state.checkpoint !== `${product}_viewed`) onPaymentSettled(state);
+    if (settledRef.current) return;
+    if (state.checkpoint !== `${product}_viewed`) {
+      settledRef.current = true;
+      onPaymentSettledRef.current(state);
+    }
   }
 
   return (
