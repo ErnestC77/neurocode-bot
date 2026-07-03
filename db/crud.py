@@ -7,7 +7,8 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
 from db.database import get_sessionmaker
-from db.models import Answer, Lead, Purchase, ReminderSent, User, utcnow
+from db.models import (AdminPendingEdit, Answer, BotSetting, Lead, Purchase,
+                       ReminderSent, User, utcnow)
 
 
 # ---------- Пользователи / чекпоинты ----------
@@ -270,3 +271,46 @@ async def log_reminder(tg_id: int, code: str) -> bool:
         except IntegrityError:
             await session.rollback()
             return False
+
+
+# ---------- Настройки (/settings) ----------
+
+async def get_setting_value(key: str) -> str | None:
+    async with get_sessionmaker()() as session:
+        setting = await session.get(BotSetting, key)
+        return setting.value if setting else None
+
+
+async def set_setting_value(key: str, value: str) -> None:
+    async with get_sessionmaker()() as session:
+        setting = await session.get(BotSetting, key)
+        if setting is None:
+            session.add(BotSetting(key=key, value=value))
+        else:
+            setting.value = value
+        await session.commit()
+
+
+async def get_pending_setting_edit(admin_tg_id: int) -> str | None:
+    """Ключ настройки, которую сейчас редактирует админ, или None."""
+    async with get_sessionmaker()() as session:
+        pending = await session.get(AdminPendingEdit, admin_tg_id)
+        return pending.setting_key if pending else None
+
+
+async def set_pending_setting_edit(admin_tg_id: int, setting_key: str) -> None:
+    async with get_sessionmaker()() as session:
+        pending = await session.get(AdminPendingEdit, admin_tg_id)
+        if pending is None:
+            session.add(AdminPendingEdit(admin_tg_id=admin_tg_id, setting_key=setting_key))
+        else:
+            pending.setting_key = setting_key
+        await session.commit()
+
+
+async def clear_pending_setting_edit(admin_tg_id: int) -> None:
+    async with get_sessionmaker()() as session:
+        pending = await session.get(AdminPendingEdit, admin_tg_id)
+        if pending:
+            await session.delete(pending)
+            await session.commit()
