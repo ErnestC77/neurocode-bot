@@ -3,7 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { api, ApiError, type FunnelState } from "./api/client";
 import { resolveScreen } from "./funnel/resolveScreen";
 import Consent from "./screens/Consent";
+import ConsultDetail from "./screens/ConsultDetail";
+import ConsultEmailInput from "./screens/ConsultEmailInput";
 import Offer from "./screens/Offer";
+import ProductDetail from "./screens/ProductDetail";
 import Quiz from "./screens/Quiz";
 import Result from "./screens/Result";
 import WelcomeCarousel from "./screens/WelcomeCarousel";
@@ -62,6 +65,33 @@ export default function App() {
     case "result":
       return <Result resultType={state.result_type!} onNext={() => runAction(api.showOffer)} />;
     case "offer":
-      return <Offer state={state} onRetake={() => runAction(api.retake)} />;
+      return (
+        <Offer
+          state={state}
+          onRetake={() => runAction(api.retake)}
+          onSelectProduct={(product) =>
+            runAction(() =>
+              product === "consult"
+                ? api.bookConsult()
+                : api.viewProduct(product as "book" | "practicum"),
+            )
+          }
+        />
+      );
+    case "product-detail": {
+      const product = state.checkpoint === "book_viewed" ? "book" : "practicum";
+      const price = product === "book" ? state.book_price_rub : state.practicum_price_rub;
+      return <ProductDetail product={product} price={price} onPaymentSettled={setState} />;
+    }
+    case "consult-detail":
+      return <ConsultDetail onBook={() => runAction(api.bookConsult)} />;
+    case "consult-email-input":
+      return (
+        <ConsultEmailInput
+          onSubmit={api.submitConsultEmail}
+          onDone={setState}
+          onError={(msg) => setError(msg)}
+        />
+      );
   }
 }

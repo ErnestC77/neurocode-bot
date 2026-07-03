@@ -22,9 +22,25 @@ describe("resolveScreen", () => {
     expect(resolveScreen("new", null)).toBe("welcome");
   });
 
-  it("falls back to offer for out-of-2a-scope checkpoints when result already exists", () => {
-    // practicum_viewed/consult_viewed/book_viewed/idle принадлежат подпроекту 2b —
-    // у 2a для них нет экрана; если результат уже есть, Offer самодостаточен.
-    expect(resolveScreen("practicum_viewed", "impostor")).toBe("offer");
+  it("falls back to offer for idle (post-purchase/post-lead) when result already exists", () => {
+    // idle наступает после deliver()/create_lead — своего экрана не имеет,
+    // Offer с available_products и есть умное меню M9.
+    expect(resolveScreen("idle", "impostor")).toBe("offer");
+  });
+
+  it("maps practicum_viewed to product-detail", () => {
+    expect(resolveScreen("practicum_viewed", "survival")).toBe("product-detail");
+  });
+
+  it("maps book_viewed to product-detail", () => {
+    expect(resolveScreen("book_viewed", "survival")).toBe("product-detail");
+  });
+
+  it("maps consult_viewed to consult-detail", () => {
+    expect(resolveScreen("consult_viewed", "survival")).toBe("consult-detail");
+  });
+
+  it("maps awaiting_email to consult-email-input", () => {
+    expect(resolveScreen("awaiting_email", "survival")).toBe("consult-email-input");
   });
 });
