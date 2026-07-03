@@ -7,12 +7,12 @@ from datetime import datetime, timezone
 
 from aiogram import F, Router
 from aiogram.filters import Command
-from aiogram.types import BufferedInputFile, Message
+from aiogram.types import BufferedInputFile, ChatMemberUpdated, Message
 
 from config import Config
 from db import crud
 from payments import delivery
-from services.settings import is_authorized_admin
+from services.settings import get_effective_owner_chat_id, is_authorized_admin
 
 router = Router()
 
@@ -35,6 +35,24 @@ async def get_forwarded_chat_id(message: Message, config: Config) -> None:
         return
     chat = message.forward_from_chat
     await message.reply(f"chat_id: <code>{chat.id}</code> ({chat.title})")
+
+
+@router.my_chat_member()
+async def bot_membership_changed(event: ChatMemberUpdated, config: Config) -> None:
+    """Telegram сам присылает это событие боту при любом изменении его прав в
+    чате/канале (добавили, повысили до админа, сняли права и т.д.) — вместе с
+    настоящим chat_id, без пересылки сообщений. Полезно для каналов с защитой
+    контента (запрет пересылки), где handlers/admin.py::get_forwarded_chat_id
+    не сработает."""
+    owner_chat_id = await get_effective_owner_chat_id(config)
+    if not owner_chat_id:
+        return
+    chat = event.chat
+    await event.bot.send_message(
+        owner_chat_id,
+        f"Права бота изменились в «{chat.title}» (chat_id: <code>{chat.id}</code>), "
+        f"новый статус: {event.new_chat_member.status}",
+    )
 
 
 @router.message(Command("redeliver"))
