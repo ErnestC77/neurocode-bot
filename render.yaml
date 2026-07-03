@@ -1,0 +1,55 @@
+# Render Blueprint для бота «Диагностика нейрокода» (ЮKassa).
+# Создаёт Web Service (aiohttp биндит $PORT для webhook + long-polling бота)
+# и базу PostgreSQL 16. Секреты (sync: false) заполняются в дашборде Render.
+#
+# ВАЖНО про тарифы:
+#  - Web Service на плане free засыпает после ~15 мин без входящих запросов —
+#    long-polling бота при этом остановится. Для рабочего бота нужен план
+#    starter (или выше).
+#  - PostgreSQL на плане free удаляется через 90 дней. Для продакшена — платный план.
+
+databases:
+  - name: neurocode-bot-db
+    databaseName: neurocode
+    user: neurocode
+    plan: free                 # для продакшена смените на basic-256mb или выше
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: neurocode-bot
+    runtime: python
+    plan: free                 # ВНИМАНИЕ: уснёт после ~15 мин без запросов и остановит polling
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: neurocode-bot-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: REMINDER_DELAY_HOURS
+        value: "24"
+      - key: REMINDER_CHECK_INTERVAL
+        value: "300"
+      # --- секреты: задаются вручную в дашборде (Environment) ---
+      - key: BOT_TOKEN
+        sync: false
+      - key: OWNER_CHAT_ID
+        sync: false
+      - key: YOOKASSA_SHOP_ID
+        sync: false
+      - key: YOOKASSA_SECRET_KEY
+        sync: false
+      - key: PRACTICUM_CHANNEL_ID
+        sync: false
+      - key: BOOK_FILE_ID
+        sync: false
+      # WEBHOOK_BASE_URL = публичный URL этого сервиса (например,
+      # https://neurocode-bot.onrender.com). Заполнить после первого деплоя.
+      - key: WEBHOOK_BASE_URL
+        sync: false
