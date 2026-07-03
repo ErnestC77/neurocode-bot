@@ -1,4 +1,13 @@
-"""Точка входа: бот (long-polling) + aiohttp-сервер для webhook ЮKassa в одном процессе."""
+"""aiogram-диспетчер и общий раннер long-polling.
+
+``run_bot_polling`` используется в двух местах:
+- здесь же, для локального standalone-запуска (``python bot.py``, без
+  Mini App/FastAPI — удобно для быстрой проверки чат-флоу);
+- из ``asgi.py`` как фоновая задача внутри FastAPI lifespan (продакшен).
+
+Сам этот модуль ничего не знает про FastAPI — раздельность частей: этот
+файл только про бота, ``api/app.py`` только про HTTP, ``asgi.py`` их сводит.
+"""
 from __future__ import annotations
 
 import asyncio
@@ -7,14 +16,12 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiohttp import web
 
-from config import load_config
+from config import Config, load_config
 from db.database import init_db, init_engine
 from handlers import (admin, book, consent, consult, menu, practicum, settings_admin,
                       start, test, text_input)
 from middlewares import ActivityMiddleware
-from payments.webhook import setup_routes
 from scheduler import reminder_loop
 
 logging.basicConfig(
@@ -24,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger("bot")
 
 
-def build_dispatcher(config) -> Dispatcher:
+def build_dispatcher(config: Config) -> Dispatcher:
     dp = Dispatcher()
     dp["config"] = config
     dp.message.middleware(ActivityMiddleware())
@@ -45,9 +52,19 @@ def build_dispatcher(config) -> Dispatcher:
     return dp
 
 
-async def main() -> None:
-    config = load_config()
+async def run_bot_polling(bot: Bot, config: Config) -> None:
+    dp = build_dispatcher(config)
+    reminder_task = asyncio.create_task(reminder_loop(bot, config))
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("Запуск long-polling…")
+        await dp.start_polling(bot)
+    finally:
+        reminder_task.cancel()
 
+
+async def _standalone_main() -> None:
+    config = load_config()
     init_engine(config.database_url)
     await init_db()
 
@@ -55,32 +72,14 @@ async def main() -> None:
         token=config.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
-    dp = build_dispatcher(config)
-
-    # aiohttp-сервер для webhook ЮKassa (заодно биндит PORT — нужно для хостинга).
-    app = web.Application()
-    setup_routes(app, bot, config)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, host="0.0.0.0", port=config.port)
-    await site.start()
-    logger.info("Webhook-сервер ЮKassa слушает порт %s (%s)", config.port, config.yookassa_webhook_url)
-
-    # Фоновая рассылка напоминаний R1-R6 + ретраи выгрузки/выдачи доступа.
-    reminder_task = asyncio.create_task(reminder_loop(bot, config))
-
     try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        logger.info("Запуск long-polling…")
-        await dp.start_polling(bot)
+        await run_bot_polling(bot, config)
     finally:
-        reminder_task.cancel()
-        await runner.cleanup()
         await bot.session.close()
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        asyncio.run(_standalone_main())
     except (KeyboardInterrupt, SystemExit):
         logger.info("Остановлено")
