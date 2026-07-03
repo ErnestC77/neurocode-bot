@@ -14,11 +14,17 @@ from api.deps import current_client
 from db import crud
 from services import checkpoints, settings
 from services.catalog import get_available_products
+from services.scoring import compute_result
 
 router = APIRouter(prefix="/api/funnel")
 
 
 class AnswerOut(BaseModel):
+    question_no: int
+    score: int
+
+
+class AnswerIn(BaseModel):
     question_no: int
     score: int
 
@@ -73,4 +79,29 @@ async def accept_consent(tg_id: int = Depends(current_client)) -> FunnelStateOut
 async def retake(tg_id: int = Depends(current_client)) -> FunnelStateOut:
     await crud.reset_test(tg_id)
     await crud.set_checkpoint(tg_id, checkpoints.IN_TEST)
+    return await _build_state(tg_id)
+
+
+@router.post("/answers")
+async def submit_answer(body: AnswerIn, tg_id: int = Depends(current_client)) -> FunnelStateOut:
+    expected = await crud.next_question_no(tg_id)
+    if body.question_no != expected:
+        return await _build_state(tg_id)
+
+    await crud.upsert_answer(tg_id, body.question_no, body.score)
+
+    if body.question_no < 7:
+        await crud.set_checkpoint(tg_id, checkpoints.IN_TEST)
+    else:
+        scores = await crud.get_answer_scores(tg_id)
+        result_type = compute_result(scores)
+        await crud.set_result(tg_id, result_type)
+        await crud.set_checkpoint(tg_id, checkpoints.RESULT_SHOWN)
+
+    return await _build_state(tg_id)
+
+
+@router.post("/offer/show")
+async def show_offer(tg_id: int = Depends(current_client)) -> FunnelStateOut:
+    await crud.set_checkpoint(tg_id, checkpoints.OFFER_SHOWN)
     return await _build_state(tg_id)

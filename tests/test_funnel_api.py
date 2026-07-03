@@ -7,7 +7,6 @@
 """
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 
 from api.app import create_app
@@ -53,7 +52,64 @@ def test_consent_sets_consent_given_and_in_test():
     assert body["consent_given"] is True
 
 
-@pytest.mark.skip(reason="POST /api/funnel/answers появится в Task 3")
+def test_answer_appends_and_keeps_in_test_checkpoint():
+    client, headers = _client(705)
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        response = client.post(
+            "/api/funnel/answers", headers=headers, json={"question_no": 1, "score": 2},
+        )
+    body = response.json()
+    assert body["checkpoint"] == "in_test"
+    assert body["answers"] == [{"question_no": 1, "score": 2}]
+    assert body["result_type"] is None
+
+
+def test_stale_answer_is_ignored():
+    client, headers = _client(706)
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        client.post("/api/funnel/answers", headers=headers, json={"question_no": 1, "score": 2})
+        # Повторный ответ на уже отвеченный вопрос — no-op, не ошибка.
+        response = client.post(
+            "/api/funnel/answers", headers=headers, json={"question_no": 1, "score": 0},
+        )
+    body = response.json()
+    assert response.status_code == 200
+    assert body["answers"] == [{"question_no": 1, "score": 2}]  # не перезаписалось
+
+
+def test_seventh_answer_computes_result_and_sets_result_shown():
+    client, headers = _client(707)
+    # Да,Да,Нет,Иногда,Нет,Да,Иногда -> Q1=2,Q2=2,Q3=0,Q4=1,Q5=0,Q6=2,Q7=1
+    # S_survival=Q1+Q2+Q6=6, S_impostor=Q3+Q5+Q7=1, S_others=Q4+Q6+Q7=4 -> survival
+    # (тот же пример, что в LOGIC.MD, Блок 3)
+    scores = [2, 2, 0, 1, 0, 2, 1]
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        response = None
+        for q, s in enumerate(scores, start=1):
+            response = client.post(
+                "/api/funnel/answers", headers=headers, json={"question_no": q, "score": s},
+            )
+    body = response.json()
+    assert body["checkpoint"] == "result_shown"
+    assert body["result_type"] == "survival"
+    assert len(body["answers"]) == 7
+
+
+def test_offer_show_sets_offer_shown_and_lists_available_products():
+    client, headers = _client(708)
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        for q, s in enumerate([2, 2, 0, 1, 0, 2, 1], start=1):
+            client.post("/api/funnel/answers", headers=headers, json={"question_no": q, "score": s})
+        response = client.post("/api/funnel/offer/show", headers=headers)
+    body = response.json()
+    assert body["checkpoint"] == "offer_shown"
+    assert set(body["available_products"]) == {"book", "practicum", "consult"}
+
+
 def test_retake_resets_answers_and_checkpoint():
     client, headers = _client(704)
     with client:
