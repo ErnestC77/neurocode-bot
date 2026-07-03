@@ -110,6 +110,27 @@ def test_offer_show_sets_offer_shown_and_lists_available_products():
     assert set(body["available_products"]) == {"book", "practicum", "consult"}
 
 
+def test_answer_score_out_of_range_is_rejected():
+    client, headers = _client(709)
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        response = client.post(
+            "/api/funnel/answers", headers=headers, json={"question_no": 1, "score": 99},
+        )
+    assert response.status_code == 422
+
+
+def test_offer_show_without_result_is_a_noop():
+    client, headers = _client(710)
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        response = client.post("/api/funnel/offer/show", headers=headers)
+    body = response.json()
+    assert response.status_code == 200
+    assert body["checkpoint"] == "in_test"  # не сдвинулся на offer_shown
+    assert body["result_type"] is None
+
+
 def test_retake_resets_answers_and_checkpoint():
     client, headers = _client(704)
     with client:

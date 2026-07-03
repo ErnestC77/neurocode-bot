@@ -8,7 +8,7 @@ handlers/test.py — тот же db/crud.py, services/scoring.py, services/catal
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.deps import current_client
 from db import crud
@@ -26,7 +26,7 @@ class AnswerOut(BaseModel):
 
 class AnswerIn(BaseModel):
     question_no: int
-    score: int
+    score: int = Field(ge=0, le=2)
 
 
 class FunnelStateOut(BaseModel):
@@ -103,5 +103,8 @@ async def submit_answer(body: AnswerIn, tg_id: int = Depends(current_client)) ->
 
 @router.post("/offer/show")
 async def show_offer(tg_id: int = Depends(current_client)) -> FunnelStateOut:
+    user = await crud.get_user(tg_id)
+    if user is None or user.result_type is None:
+        return await _build_state(tg_id)
     await crud.set_checkpoint(tg_id, checkpoints.OFFER_SHOWN)
     return await _build_state(tg_id)
