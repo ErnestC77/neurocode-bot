@@ -188,6 +188,16 @@ def test_consult_book_sets_awaiting_email():
     assert response.json()["checkpoint"] == "awaiting_email"
 
 
+def test_consult_view_sets_consult_viewed_when_available():
+    client, headers = _client(717)
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        for q, s in enumerate([2, 2, 0, 1, 0, 2, 1], start=1):
+            client.post("/api/funnel/answers", headers=headers, json={"question_no": q, "score": s})
+        response = client.post("/api/funnel/consult/view", headers=headers)
+    assert response.json()["checkpoint"] == "consult_viewed"
+
+
 def test_consult_email_invalid_is_rejected():
     client, headers = _client(715)
     with client:

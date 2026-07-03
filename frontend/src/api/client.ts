@@ -63,6 +63,7 @@ export const api = {
   buyProduct: (product: "book" | "practicum") =>
     request<PurchaseInitiatedOut>(`/api/funnel/product/${product}/buy`, { method: "POST" }),
   bookConsult: () => postFunnel("consult/book"),
+  viewConsult: () => postFunnel("consult/view"),
   submitConsultEmail: (email: string) =>
     request<FunnelState>("/api/funnel/consult/email", {
       method: "POST",

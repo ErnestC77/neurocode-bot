@@ -172,6 +172,14 @@ async def book_consult(tg_id: int = Depends(current_client)) -> FunnelStateOut:
     return await _build_state(tg_id)
 
 
+@router.post("/consult/view")
+async def view_consult(tg_id: int = Depends(current_client)) -> FunnelStateOut:
+    available = await get_available_products(tg_id)
+    if "consult" in available:
+        await crud.set_checkpoint(tg_id, checkpoints.CONSULT_VIEWED)
+    return await _build_state(tg_id)
+
+
 @router.post("/consult/email")
 async def submit_consult_email(
     body: EmailIn, request: Request, tg_id: int = Depends(current_client),

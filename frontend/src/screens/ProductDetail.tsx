@@ -37,7 +37,12 @@ export default function ProductDetail({ product, price, onPaymentSettled }: Prop
     const deadline = Date.now() + POLL_TIMEOUT_MS;
 
     async function check() {
-      const state = await api.getFunnelState();
+      let state: FunnelState;
+      try {
+        state = await api.getFunnelState();
+      } catch {
+        return;
+      }
       if (settledRef.current) return;
       if (state.checkpoint !== `${product}_viewed`) {
         settledRef.current = true;
@@ -83,7 +88,12 @@ export default function ProductDetail({ product, price, onPaymentSettled }: Prop
 
   async function handleManualCheck() {
     if (settledRef.current) return;
-    const state = await api.getFunnelState();
+    let state: FunnelState;
+    try {
+      state = await api.getFunnelState();
+    } catch {
+      return;
+    }
     if (settledRef.current) return;
     if (state.checkpoint !== `${product}_viewed`) {
       settledRef.current = true;

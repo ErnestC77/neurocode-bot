@@ -72,7 +72,7 @@ export default function App() {
           onSelectProduct={(product) =>
             runAction(() =>
               product === "consult"
-                ? api.bookConsult()
+                ? api.viewConsult()
                 : api.viewProduct(product as "book" | "practicum"),
             )
           }

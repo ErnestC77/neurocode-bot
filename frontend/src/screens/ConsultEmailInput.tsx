@@ -17,8 +17,11 @@ export default function ConsultEmailInput({ onSubmit, onDone, onError }: Props) 
   const [email, setEmail] = useState("");
   const [invalid, setInvalid] = useState(false);
   const [pendingState, setPendingState] = useState<FunnelState | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit() {
+    if (submitting) return;
+    setSubmitting(true);
     setInvalid(false);
     try {
       const state = await onSubmit(email);
@@ -29,9 +32,14 @@ export default function ConsultEmailInput({ onSubmit, onDone, onError }: Props) 
       } else {
         onError(err instanceof ApiError ? err.message : "Ошибка сети");
       }
+    } finally {
+      setSubmitting(false);
     }
   }
 
+  // Не вызываем onDone сразу по успеху onSubmit — держим state локально, чтобы
+  // сначала показать M7_2_TEXT (подтверждение записи), и уходим на следующий
+  // экран только по явному тапу "Дальше".
   if (pendingState !== null) {
     return (
       <div className="flex min-h-screen flex-col justify-between bg-navy p-6 text-white">
