@@ -6,6 +6,7 @@ interface TelegramWebApp {
   initData: string;
   ready(): void;
   expand(): void;
+  openLink(url: string, options?: { try_instant_view?: boolean }): void;
 }
 
 declare global {
@@ -24,4 +25,12 @@ export function initTelegram(): void {
 
 export function getInitData(): string {
   return tg?.initData ?? "";
+}
+
+export function openLink(url: string): void {
+  if (tg) {
+    tg.openLink(url);
+  } else {
+    window.open(url, "_blank");
+  }
 }

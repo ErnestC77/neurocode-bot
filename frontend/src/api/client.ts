@@ -38,6 +38,10 @@ export interface FunnelState {
   practicum_price_rub: number;
 }
 
+export interface PurchaseInitiatedOut {
+  confirmation_url: string;
+}
+
 function postFunnel(path: string, body?: unknown): Promise<FunnelState> {
   return request<FunnelState>(`/api/funnel/${path}`, {
     method: "POST",
@@ -55,4 +59,14 @@ export const api = {
     postFunnel("answers", { question_no: questionNo, score }),
   showOffer: () => postFunnel("offer/show"),
   retake: () => postFunnel("retake"),
+  viewProduct: (product: "book" | "practicum") => postFunnel(`product/${product}/view`),
+  buyProduct: (product: "book" | "practicum") =>
+    request<PurchaseInitiatedOut>(`/api/funnel/product/${product}/buy`, { method: "POST" }),
+  bookConsult: () => postFunnel("consult/book"),
+  submitConsultEmail: (email: string) =>
+    request<FunnelState>("/api/funnel/consult/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }),
 };
