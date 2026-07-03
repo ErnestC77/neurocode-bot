@@ -179,3 +179,31 @@ def test_buy_product_creates_purchase_and_returns_confirmation_url(monkeypatch):
         response = client.post("/api/funnel/product/practicum/buy", headers=headers)
     assert response.status_code == 200
     assert response.json() == {"confirmation_url": "https://yookassa.ru/pay/yk-payment-123"}
+
+
+def test_consult_book_sets_awaiting_email():
+    client, headers = _client(714)
+    with client:
+        response = client.post("/api/funnel/consult/book", headers=headers)
+    assert response.json()["checkpoint"] == "awaiting_email"
+
+
+def test_consult_email_invalid_is_rejected():
+    client, headers = _client(715)
+    with client:
+        client.post("/api/funnel/consult/book", headers=headers)
+        response = client.post(
+            "/api/funnel/consult/email", headers=headers, json={"email": "not-an-email"},
+        )
+    assert response.status_code == 422
+
+
+def test_consult_email_valid_creates_lead_and_sets_idle():
+    client, headers = _client(716)
+    with client:
+        client.post("/api/funnel/consult/book", headers=headers)
+        response = client.post(
+            "/api/funnel/consult/email", headers=headers, json={"email": "test@example.com"},
+        )
+    assert response.status_code == 200
+    assert response.json()["checkpoint"] == "idle"

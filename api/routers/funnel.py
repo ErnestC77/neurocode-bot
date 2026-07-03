@@ -7,18 +7,24 @@ handlers/test.py — тот же db/crud.py, services/scoring.py, services/catal
 """
 from __future__ import annotations
 
+import logging
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Request
+from aiogram import Bot
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from api.deps import current_client
 from config import Config
 from db import crud
+from exports.notifier import notify_lead
 from payments.yookassa_client import create_payment
 from services import checkpoints, settings
 from services.catalog import get_available_products
 from services.scoring import compute_result
+from services.validation import is_valid_email
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/funnel")
 
@@ -45,6 +51,10 @@ _PRODUCT_LABELS: dict[str, str] = {
 
 class PurchaseInitiatedOut(BaseModel):
     confirmation_url: str
+
+
+class EmailIn(BaseModel):
+    email: str
 
 
 class FunnelStateOut(BaseModel):
@@ -154,3 +164,28 @@ async def buy_product(
     )
     await crud.attach_yk_payment_id(purchase.id, payment_id)
     return PurchaseInitiatedOut(confirmation_url=confirmation_url)
+
+
+@router.post("/consult/book")
+async def book_consult(tg_id: int = Depends(current_client)) -> FunnelStateOut:
+    await crud.set_checkpoint(tg_id, checkpoints.AWAITING_EMAIL)
+    return await _build_state(tg_id)
+
+
+@router.post("/consult/email")
+async def submit_consult_email(
+    body: EmailIn, request: Request, tg_id: int = Depends(current_client),
+) -> FunnelStateOut:
+    if not is_valid_email(body.email):
+        raise HTTPException(status_code=422, detail="invalid_email")
+
+    bot: Bot = request.app.state.bot
+    config: Config = request.app.state.config
+    lead = await crud.create_lead(tg_id, body.email)
+    await crud.set_checkpoint(tg_id, checkpoints.IDLE)
+    if lead is not None:
+        try:
+            await notify_lead(bot, config, lead)
+        except Exception:  # noqa: BLE001 — не выгрузилось сейчас, ретрай подхватит scheduler
+            logger.exception("Не удалось выгрузить лид user=%s", tg_id)
+    return await _build_state(tg_id)
