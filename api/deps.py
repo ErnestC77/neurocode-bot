@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import Depends, Header, HTTPException, Request
 
 from config import Config
+from db import crud
 from services.settings import is_authorized_admin
 from services.telegram_auth import InvalidInitDataError, parse_and_validate_init_data
 
@@ -22,6 +23,7 @@ async def current_client(
     tg_id = user.get("id")
     if tg_id is None:
         raise HTTPException(status_code=401, detail="no user in initData")
+    await crud.touch_activity(tg_id, user.get("username"), user.get("first_name"))
     return tg_id
 
 
