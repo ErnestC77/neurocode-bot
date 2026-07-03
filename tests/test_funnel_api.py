@@ -145,3 +145,37 @@ def test_retake_resets_answers_and_checkpoint():
     assert body["checkpoint"] == "in_test"
     assert body["result_type"] is None
     assert body["answers"] == []
+
+
+def test_view_product_sets_checkpoint_when_available():
+    client, headers = _client(711)
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        for q, s in enumerate([2, 2, 0, 1, 0, 2, 1], start=1):
+            client.post("/api/funnel/answers", headers=headers, json={"question_no": q, "score": s})
+        response = client.post("/api/funnel/product/practicum/view", headers=headers)
+    body = response.json()
+    assert body["checkpoint"] == "practicum_viewed"
+
+
+def test_view_invalid_product_is_rejected():
+    client, headers = _client(712)
+    with client:
+        response = client.post("/api/funnel/product/consult/view", headers=headers)
+    assert response.status_code == 422
+
+
+def test_buy_product_creates_purchase_and_returns_confirmation_url(monkeypatch):
+    async def fake_create_payment(**kwargs):
+        return "yk-payment-123", "https://yookassa.ru/pay/yk-payment-123"
+
+    monkeypatch.setattr("api.routers.funnel.create_payment", fake_create_payment)
+
+    client, headers = _client(713)
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        for q, s in enumerate([2, 2, 0, 1, 0, 2, 1], start=1):
+            client.post("/api/funnel/answers", headers=headers, json={"question_no": q, "score": s})
+        response = client.post("/api/funnel/product/practicum/buy", headers=headers)
+    assert response.status_code == 200
+    assert response.json() == {"confirmation_url": "https://yookassa.ru/pay/yk-payment-123"}

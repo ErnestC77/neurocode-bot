@@ -7,11 +7,15 @@ handlers/test.py — тот же db/crud.py, services/scoring.py, services/catal
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from typing import Literal
+
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 
 from api.deps import current_client
+from config import Config
 from db import crud
+from payments.yookassa_client import create_payment
 from services import checkpoints, settings
 from services.catalog import get_available_products
 from services.scoring import compute_result
@@ -27,6 +31,20 @@ class AnswerOut(BaseModel):
 class AnswerIn(BaseModel):
     question_no: int
     score: int = Field(ge=0, le=2)
+
+
+_PRODUCT_CHECKPOINT: dict[str, str] = {
+    "book": checkpoints.BOOK_VIEWED,
+    "practicum": checkpoints.PRACTICUM_VIEWED,
+}
+_PRODUCT_LABELS: dict[str, str] = {
+    "book": "Книга «Целеполагание»",
+    "practicum": "Практикум «Найди свой код»",
+}
+
+
+class PurchaseInitiatedOut(BaseModel):
+    confirmation_url: str
 
 
 class FunnelStateOut(BaseModel):
@@ -108,3 +126,31 @@ async def show_offer(tg_id: int = Depends(current_client)) -> FunnelStateOut:
         return await _build_state(tg_id)
     await crud.set_checkpoint(tg_id, checkpoints.OFFER_SHOWN)
     return await _build_state(tg_id)
+
+
+@router.post("/product/{product}/view")
+async def view_product(
+    product: Literal["book", "practicum"], tg_id: int = Depends(current_client),
+) -> FunnelStateOut:
+    available = await get_available_products(tg_id)
+    if product in available:
+        await crud.set_checkpoint(tg_id, _PRODUCT_CHECKPOINT[product])
+    return await _build_state(tg_id)
+
+
+@router.post("/product/{product}/buy")
+async def buy_product(
+    product: Literal["book", "practicum"], request: Request,
+    tg_id: int = Depends(current_client),
+) -> PurchaseInitiatedOut:
+    config: Config = request.app.state.config
+    amount = await settings.get_int(f"{product}_price_rub")
+    purchase = await crud.create_purchase(tg_id, product, amount)
+    payment_id, confirmation_url = await create_payment(
+        shop_id=await settings.get_str("yookassa_shop_id"), secret_key=config.yookassa_secret_key,
+        amount_rub=amount, description=_PRODUCT_LABELS[product],
+        idempotence_key=str(purchase.id), return_url=config.webhook_base_url,
+        metadata={"tg_id": tg_id, "product": product, "purchase_id": purchase.id},
+    )
+    await crud.attach_yk_payment_id(purchase.id, payment_id)
+    return PurchaseInitiatedOut(confirmation_url=confirmation_url)
