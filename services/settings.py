@@ -32,6 +32,12 @@ SETTINGS: dict[str, SettingSpec] = {
         "book_file_id", "📄 File ID книги", str, ""),
     "practicum_channel_id": SettingSpec(
         "practicum_channel_id", "📢 ID канала практикума", str, ""),
+    "practicum_workbook_file_id": SettingSpec(
+        "practicum_workbook_file_id", "📓 File ID рабочей тетради", str, ""),
+    "practicum_video_file_id": SettingSpec(
+        "practicum_video_file_id", "🎬 File ID видео", str, ""),
+    "practicum_video_url": SettingSpec(
+        "practicum_video_url", "🔗 Ссылка на видео (пока файл не загружен)", str, ""),
     "book_price_rub": SettingSpec(
         "book_price_rub", "📕 Цена книги", int, "990", suffix=" ₽"),
     "practicum_price_rub": SettingSpec(

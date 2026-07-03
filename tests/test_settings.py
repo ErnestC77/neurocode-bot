@@ -136,3 +136,10 @@ async def test_get_int_returns_default_when_unset(settings_db):
 async def test_set_value_then_get_int_roundtrip(settings_db):
     await settings.set_value("book_price_rub", "1490")
     assert await settings.get_int("book_price_rub") == 1490
+
+
+def test_practicum_content_settings_registered():
+    for key in ("practicum_workbook_file_id", "practicum_video_file_id", "practicum_video_url"):
+        spec = SETTINGS[key]
+        assert spec.value_type is str
+        assert spec.default == ""
