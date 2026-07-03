@@ -98,3 +98,30 @@ class ReminderSent(Base):
     user_tg_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.tg_id"), primary_key=True)
     reminder_code: Mapped[str] = mapped_column(String(4), primary_key=True)  # 'R1'..'R6'
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class BotSetting(Base):
+    """Бизнес-настройка, редактируемая владельцем через /settings — не секрет.
+
+    Ключи и типы описаны в реестре services/settings.py::SETTINGS, эта таблица
+    хранит только сырые строки; парсинг/валидация — на стороне Python.
+    """
+    __tablename__ = "bot_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(String(512))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class AdminPendingEdit(Base):
+    """«Админ X сейчас редактирует настройку Y» — состояние UI /settings.
+
+    Отдельно от users.checkpoint: это не состояние воронки продаж, а состояние
+    админ-панели, и смешивать их в одном поле рискованно (админ теоретически
+    может сам проходить тест как обычный пользователь).
+    """
+    __tablename__ = "admin_pending_edits"
+
+    admin_tg_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    setting_key: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
