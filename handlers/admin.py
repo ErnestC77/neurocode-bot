@@ -11,21 +11,22 @@ from aiogram.types import BufferedInputFile, Message
 
 from config import Config
 from db import crud
+from services.settings import is_authorized_admin
 
 router = Router()
 
 
 @router.message(F.document)
 async def get_file_id(message: Message, config: Config) -> None:
-    """Владелец присылает PDF книги боту — бот отвечает file_id для BOOK_FILE_ID в .env."""
-    if not config.owner_chat_id or message.from_user.id != config.owner_chat_id:
+    """Владелец присылает PDF книги боту — бот отвечает file_id для BOOK_FILE_ID в /settings."""
+    if not await is_authorized_admin(message.from_user.id, config):
         return
     await message.reply(f"file_id: <code>{message.document.file_id}</code>")
 
 
 @router.message(Command("export_leads"))
 async def export_leads(message: Message, config: Config) -> None:
-    if not config.owner_chat_id or message.from_user.id != config.owner_chat_id:
+    if not await is_authorized_admin(message.from_user.id, config):
         return  # команда доступна только владельцу бота
 
     leads = await crud.list_leads()

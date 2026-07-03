@@ -30,13 +30,9 @@ async def consult_book(callback: CallbackQuery) -> None:
     await callback.message.answer(TEXTS["CONSULT_EMAIL_PROMPT"])
 
 
-@router.message(F.text & ~F.text.startswith("/"))
-async def consult_email_input(message: Message, config: Config) -> None:
+async def handle_email_input(message: Message, config: Config) -> None:
+    """Вызывается из handlers/text_input.py, когда checkpoint == AWAITING_EMAIL."""
     tg_id = message.from_user.id
-    user = await crud.get_user(tg_id)
-    if user is None or user.checkpoint != checkpoints.AWAITING_EMAIL:
-        return  # не ждём здесь текст от этого пользователя — не мешаем остальному
-
     email = (message.text or "").strip()
     if not _EMAIL_RE.match(email):
         await message.answer(TEXTS["CONSULT_EMAIL_INVALID"])

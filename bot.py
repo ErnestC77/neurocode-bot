@@ -11,7 +11,8 @@ from aiohttp import web
 
 from config import load_config
 from db.database import init_db, init_engine
-from handlers import admin, book, consent, consult, menu, practicum, start, test
+from handlers import (admin, book, consent, consult, menu, practicum, settings_admin,
+                      start, test, text_input)
 from middlewares import ActivityMiddleware
 from payments.webhook import setup_routes
 from scheduler import reminder_loop
@@ -34,10 +35,13 @@ def build_dispatcher(config) -> Dispatcher:
     dp.include_router(menu.router)
     dp.include_router(practicum.router)
     dp.include_router(book.router)
-    dp.include_router(admin.router)
-    # consult.router — последним: у него catch-all текстовый хендлер (ввод email),
-    # который иначе перехватил бы команды/сообщения последующих роутеров.
     dp.include_router(consult.router)
+    dp.include_router(admin.router)
+    dp.include_router(settings_admin.router)
+    # text_input.router — последним: единственный catch-all для свободного
+    # текста (email консультации + значения настроек), иначе он перехватил бы
+    # команды/сообщения, предназначенные другим роутерам.
+    dp.include_router(text_input.router)
     return dp
 
 
