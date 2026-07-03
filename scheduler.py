@@ -19,7 +19,7 @@ from db import crud
 from exports.notifier import retry_unexported_leads
 from keyboards.inline import next_kb, reminder_cta_kb
 from payments import delivery
-from services import checkpoints
+from services import checkpoints, settings
 from services.catalog import BOOK, PRACTICUM
 from texts.messages import TEXTS
 
@@ -52,7 +52,7 @@ def _reminder_keyboard(code: str) -> InlineKeyboardMarkup | None:
 
 async def process_reminders(bot: Bot, config: Config) -> int:
     sent = 0
-    delay = timedelta(hours=config.reminder_delay_hours)
+    delay = timedelta(hours=await settings.get_int("reminder_delay_hours"))
     for user, code in await crud.due_reminder_users(checkpoints.REMINDER_CODES, delay):
         cancel_check = _CANCEL_CHECK.get(user.checkpoint)
         if cancel_check is not None and await cancel_check(user.tg_id):
@@ -90,8 +90,7 @@ async def process_undelivered_purchases(bot: Bot, config: Config) -> int:
 
 
 async def reminder_loop(bot: Bot, config: Config) -> None:
-    logger.info("Планировщик запущен (интервал %s c, порог бездействия %s ч)",
-               config.reminder_check_interval, config.reminder_delay_hours)
+    logger.info("Планировщик запущен")
     while True:
         try:
             await process_reminders(bot, config)
@@ -99,4 +98,5 @@ async def reminder_loop(bot: Bot, config: Config) -> None:
             await retry_unexported_leads(bot, config)
         except Exception:  # noqa: BLE001
             logger.exception("Ошибка в цикле планировщика")
-        await asyncio.sleep(config.reminder_check_interval)
+        interval = await settings.get_int("reminder_check_interval")
+        await asyncio.sleep(interval)
