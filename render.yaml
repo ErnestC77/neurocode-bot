@@ -32,24 +32,17 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: "3.12.6"
-      - key: REMINDER_DELAY_HOURS
-        value: "24"
-      - key: REMINDER_CHECK_INTERVAL
-        value: "300"
       # --- секреты: задаются вручную в дашборде (Environment) ---
       - key: BOT_TOKEN
         sync: false
       - key: OWNER_CHAT_ID
         sync: false
-      - key: YOOKASSA_SHOP_ID
-        sync: false
       - key: YOOKASSA_SECRET_KEY
-        sync: false
-      - key: PRACTICUM_CHANNEL_ID
-        sync: false
-      - key: BOOK_FILE_ID
         sync: false
       # WEBHOOK_BASE_URL = публичный URL этого сервиса (например,
       # https://neurocode-bot.onrender.com). Заполнить после первого деплоя.
       - key: WEBHOOK_BASE_URL
         sync: false
+      # Остальное (цены, BOOK_FILE_ID, PRACTICUM_CHANNEL_ID, интервалы
+      # напоминаний, YOOKASSA_SHOP_ID) настраивается командой /settings в
+      # самом боте, а не здесь.
