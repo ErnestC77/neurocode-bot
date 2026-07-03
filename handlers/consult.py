@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import re
 
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
@@ -13,13 +12,12 @@ from exports.notifier import notify_lead
 from keyboards.inline import after_product_kb
 from services import checkpoints
 from services.catalog import CONSULT, get_available_products
+from services.validation import is_valid_email
 from texts.messages import TEXTS
 
 logger = logging.getLogger(__name__)
 
 router = Router()
-
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 @router.callback_query(F.data == "consult:book")
@@ -34,7 +32,7 @@ async def handle_email_input(message: Message, config: Config) -> None:
     """Вызывается из handlers/text_input.py, когда checkpoint == AWAITING_EMAIL."""
     tg_id = message.from_user.id
     email = (message.text or "").strip()
-    if not _EMAIL_RE.match(email):
+    if not is_valid_email(email):
         await message.answer(TEXTS["CONSULT_EMAIL_INVALID"])
         return
 
