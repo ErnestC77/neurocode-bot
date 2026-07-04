@@ -105,3 +105,27 @@ async def export_leads(message: Message, config: Config) -> None:
     # utf-8-sig — чтобы Excel сразу правильно показал кириллицу/эмодзи в username.
     document = BufferedInputFile(buf.getvalue().encode("utf-8-sig"), filename=filename)
     await message.answer_document(document, caption=f"Заявок на консультацию: {len(leads)}")
+
+
+@router.message(Command("add_admin"))
+async def add_admin_cmd(message: Message, config: Config) -> None:
+    if not await is_authorized_admin(message.from_user.id, config):
+        return
+    parts = (message.text or "").split()
+    if len(parts) != 2 or not parts[1].lstrip("-").isdigit():
+        await message.reply("Использование: /add_admin <tg_id>")
+        return
+    added = await crud.add_admin(int(parts[1]), added_by=message.from_user.id)
+    await message.reply("Добавлен." if added else "Уже был админом.")
+
+
+@router.message(Command("remove_admin"))
+async def remove_admin_cmd(message: Message, config: Config) -> None:
+    if not await is_authorized_admin(message.from_user.id, config):
+        return
+    parts = (message.text or "").split()
+    if len(parts) != 2 or not parts[1].lstrip("-").isdigit():
+        await message.reply("Использование: /remove_admin <tg_id>")
+        return
+    removed = await crud.remove_admin(int(parts[1]))
+    await message.reply("Удалён." if removed else "Не был админом.")
