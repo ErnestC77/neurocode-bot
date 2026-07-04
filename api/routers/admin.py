@@ -46,10 +46,14 @@ class UserOut(BaseModel):
 
 
 async def _leads_out() -> list[LeadOut]:
+    # crud.list_leads() сортирует по возрастанию (для CSV-экспорта /export_leads,
+    # где это уже устоявшийся порядок) — для панели разворачиваем в свежие сверху,
+    # как у purchases/users, не трогая сам crud (не ломаем существующий экспорт).
+    leads = sorted(await crud.list_leads(), key=lambda pair: pair[0].created_at, reverse=True)
     return [
         LeadOut(tg_id=lead.user_tg_id, username=user.username if user else None,
                email=lead.email, created_at=lead.created_at)
-        for lead, user in await crud.list_leads()
+        for lead, user in leads
     ]
 
 

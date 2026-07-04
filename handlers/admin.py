@@ -128,7 +128,14 @@ async def remove_admin_cmd(message: Message, config: Config) -> None:
     if len(parts) != 2 or not parts[1].lstrip("-").isdigit():
         await message.reply("Использование: /remove_admin <tg_id>")
         return
-    removed = await crud.remove_admin(int(parts[1]))
+    target_tg_id = int(parts[1])
+    if config.owner_chat_id and target_tg_id == config.owner_chat_id:
+        # is_authorized_admin всегда пропускает env-владельца в обход таблицы
+        # admins (страховка от самоблокировки) — удаление строки не отзовёт
+        # ему доступ, поэтому явно предупреждаем, а не молчим про "Удалён.".
+        await message.reply("Владелец из .env не может быть удалён из админов — доступ у него не через таблицу admins.")
+        return
+    removed = await crud.remove_admin(target_tg_id)
     await message.reply("Удалён." if removed else "Не был админом.")
 
 
