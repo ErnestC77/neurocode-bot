@@ -91,12 +91,32 @@ async def get_users() -> list[UserOut]:
     return await _users_out()
 
 
+_FORMULA_INJECTION_PREFIXES = ("=", "+", "-", "@")
+
+
+def _escape_formula_injection(value: object) -> object:
+    """Neutralizes CSV/XLSX formula injection (CWE-1236 / OWASP CSV Injection).
+
+    Telegram usernames are restricted to [A-Za-z0-9_], but first_name (and
+    other free-text fields exported here) have no such restriction -- a user
+    can set first_name to a string starting with =, +, -, or @ (e.g.
+    '=HYPERLINK("http://evil.com")'), which Excel/LibreOffice/Google Sheets
+    interpret as a formula when the admin opens the exported .xlsx. Prefixing
+    with a leading single-quote is the standard mitigation: openpyxl/Excel
+    then treat the cell as forced-text, preserving the original data while
+    rendering it literally instead of executing it.
+    """
+    if isinstance(value, str) and value.startswith(_FORMULA_INJECTION_PREFIXES):
+        return "'" + value
+    return value
+
+
 def _xlsx_response(headers: list[str], rows: list[list[object]], filename_prefix: str) -> StreamingResponse:
     wb = Workbook()
     ws = wb.active
     ws.append(headers)
     for row in rows:
-        ws.append(row)
+        ws.append([_escape_formula_injection(value) for value in row])
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)

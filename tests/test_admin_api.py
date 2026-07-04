@@ -39,6 +39,22 @@ def _admin_client_with_username(tg_id: int, username: str) -> tuple[TestClient, 
     return TestClient(app), {"X-Telegram-Init-Data": init_data}
 
 
+def _admin_client_with_first_name(tg_id: int, first_name: str) -> tuple[TestClient, dict]:
+    # Same technique as _admin_client_with_username(), but for first_name.
+    # Telegram usernames are restricted to [A-Za-z0-9_], but first_name has NO
+    # such restriction -- a real Telegram user can set it to a formula-injection
+    # payload (e.g. "=SUM(...)"). Picking a payload with no embedded quotes so
+    # it survives this helper's naive (non-json.dumps) f-string interpolation
+    # into the signed initData "user" field, same as the username helper does.
+    config = dataclasses.replace(_test_config(), owner_chat_id=tg_id)
+    app = create_app(bot=object(), config=config, bot_lifecycle=_sqlite_lifecycle)
+    init_data = _sign({
+        "auth_date": str(int(time.time())),
+        "user": f'{{"id": {tg_id}, "first_name": "{first_name}"}}',
+    })
+    return TestClient(app), {"X-Telegram-Init-Data": init_data}
+
+
 def test_leads_rejected_for_non_admin():
     client, headers = _client(801)
     with client:
@@ -187,6 +203,30 @@ def test_users_export_returns_xlsx_with_header_row():
     assert [cell.value for cell in ws[1]] == [
         "tg_id", "username", "first_name", "checkpoint", "result_type", "test_attempt", "created_at",
     ]
+
+
+def test_users_export_escapes_formula_injection_in_first_name():
+    # CWE-1236 / OWASP CSV-Injection: Telegram first_name has no charset
+    # restriction (unlike username), so a user can set it to a string that
+    # Excel/LibreOffice/Google Sheets interprets as a formula when the admin
+    # opens the exported .xlsx. _xlsx_response() must neutralize this by
+    # prefixing any cell value starting with =, +, -, or @ with a leading
+    # single-quote, which openpyxl (and Excel) treat as forced-text.
+    #
+    # Verified empirically (see task-7-report.md) that openpyxl preserves the
+    # leading "'" verbatim on write+read-back as a plain string cell (not a
+    # formula) -- so we assert on that literal round-tripped value.
+    payload = "=SUM(A1:A10)"
+    client, headers = _admin_client_with_first_name(825, payload)
+    with client:
+        response = client.get("/api/admin/users/export", headers=headers)
+    assert response.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(response.content))
+    ws = wb.active
+    header = [cell.value for cell in ws[1]]
+    first_name_col = header.index("first_name")
+    data_row = [cell.value for cell in ws[2]]
+    assert data_row[first_name_col] == "'" + payload
 
 
 def test_leads_export_rejected_for_non_admin():
