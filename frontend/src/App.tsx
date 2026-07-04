@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Route, Routes, useNavigate } from "react-router-dom";
 import { api, ApiError, type FunnelState } from "./api/client";
 import { resolveScreen } from "./funnel/resolveScreen";
+import AdminPanel from "./screens/AdminPanel";
 import Consent from "./screens/Consent";
 import ConsultDetail from "./screens/ConsultDetail";
 import ConsultEmailInput from "./screens/ConsultEmailInput";
@@ -15,7 +16,7 @@ function errorMessage(err: unknown): string {
   return err instanceof ApiError ? err.message : "Ошибка сети";
 }
 
-export default function App() {
+function FunnelApp() {
   const [state, setState] = useState<FunnelState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -94,4 +95,13 @@ export default function App() {
         />
       );
   }
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/admin" element={<AdminPanel />} />
+      <Route path="*" element={<FunnelApp />} />
+    </Routes>
+  );
 }

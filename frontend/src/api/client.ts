@@ -42,6 +42,34 @@ export interface PurchaseInitiatedOut {
   confirmation_url: string;
 }
 
+export interface AdminLead {
+  tg_id: number;
+  username: string | null;
+  email: string | null;
+  created_at: string;
+}
+
+export interface AdminPurchase {
+  id: number;
+  tg_id: number;
+  username: string | null;
+  product: string;
+  amount_rub: number;
+  status: string;
+  paid_at: string | null;
+  delivered_at: string | null;
+}
+
+export interface AdminUser {
+  tg_id: number;
+  username: string | null;
+  first_name: string | null;
+  checkpoint: string;
+  result_type: string | null;
+  test_attempt: number;
+  created_at: string;
+}
+
 function postFunnel(path: string, body?: unknown): Promise<FunnelState> {
   return request<FunnelState>(`/api/funnel/${path}`, {
     method: "POST",
@@ -70,4 +98,33 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     }),
+};
+
+async function requestBlob(path: string): Promise<Blob> {
+  const response = await fetch(path, {
+    headers: { "X-Telegram-Init-Data": getInitData() },
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, await response.text());
+  }
+  return response.blob();
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export const adminApi = {
+  getLeads: () => request<AdminLead[]>("/api/admin/leads"),
+  getPurchases: () => request<AdminPurchase[]>("/api/admin/purchases"),
+  getUsers: () => request<AdminUser[]>("/api/admin/users"),
+  exportLeads: async () => downloadBlob(await requestBlob("/api/admin/leads/export"), "leads.xlsx"),
+  exportPurchases: async () =>
+    downloadBlob(await requestBlob("/api/admin/purchases/export"), "purchases.xlsx"),
+  exportUsers: async () => downloadBlob(await requestBlob("/api/admin/users/export"), "users.xlsx"),
 };
