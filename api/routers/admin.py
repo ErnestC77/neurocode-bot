@@ -3,9 +3,12 @@
 (router-level Depends(current_admin), см. api/deps.py)."""
 from __future__ import annotations
 
-from datetime import datetime
+import io
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
 from pydantic import BaseModel
 
 from api.deps import current_admin
@@ -86,3 +89,56 @@ async def get_purchases() -> list[PurchaseOut]:
 @router.get("/users", response_model=list[UserOut])
 async def get_users() -> list[UserOut]:
     return await _users_out()
+
+
+def _xlsx_response(headers: list[str], rows: list[list[object]], filename_prefix: str) -> StreamingResponse:
+    wb = Workbook()
+    ws = wb.active
+    ws.append(headers)
+    for row in rows:
+        ws.append(row)
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = f"{filename_prefix}_{datetime.now(timezone.utc):%Y%m%d_%H%M%S}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/leads/export")
+async def export_leads() -> StreamingResponse:
+    leads = await _leads_out()
+    rows = [[l.tg_id, l.username or "", l.email or "", l.created_at.isoformat()] for l in leads]
+    return _xlsx_response(["tg_id", "username", "email", "created_at"], rows, "leads")
+
+
+@router.get("/purchases/export")
+async def export_purchases() -> StreamingResponse:
+    purchases = await _purchases_out()
+    rows = [
+        [p.id, p.tg_id, p.username or "", p.product, p.amount_rub, p.status,
+         p.paid_at.isoformat() if p.paid_at else "",
+         p.delivered_at.isoformat() if p.delivered_at else ""]
+        for p in purchases
+    ]
+    return _xlsx_response(
+        ["id", "tg_id", "username", "product", "amount_rub", "status", "paid_at", "delivered_at"],
+        rows, "purchases",
+    )
+
+
+@router.get("/users/export")
+async def export_users() -> StreamingResponse:
+    users = await _users_out()
+    rows = [
+        [u.tg_id, u.username or "", u.first_name or "", u.checkpoint,
+         u.result_type or "", u.test_attempt, u.created_at.isoformat()]
+        for u in users
+    ]
+    return _xlsx_response(
+        ["tg_id", "username", "first_name", "checkpoint", "result_type", "test_attempt", "created_at"],
+        rows, "users",
+    )

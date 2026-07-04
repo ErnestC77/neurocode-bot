@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import dataclasses
+import io
 import time
 
+import openpyxl
 from fastapi.testclient import TestClient
 
 from api.app import create_app
@@ -148,3 +150,47 @@ def test_purchases_returns_joined_user_fields_for_real_purchase(monkeypatch):
     assert purchase["paid_at"] is None
     assert purchase["delivered_at"] is None
     assert isinstance(purchase["id"], int)
+
+
+def test_leads_export_returns_xlsx_with_header_row():
+    client, headers = _admin_client(807)
+    with client:
+        response = client.get("/api/admin/leads/export", headers=headers)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    wb = openpyxl.load_workbook(io.BytesIO(response.content))
+    ws = wb.active
+    assert [cell.value for cell in ws[1]] == ["tg_id", "username", "email", "created_at"]
+
+
+def test_purchases_export_returns_xlsx_with_header_row():
+    client, headers = _admin_client(808)
+    with client:
+        response = client.get("/api/admin/purchases/export", headers=headers)
+    assert response.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(response.content))
+    ws = wb.active
+    assert [cell.value for cell in ws[1]] == [
+        "id", "tg_id", "username", "product", "amount_rub", "status", "paid_at", "delivered_at",
+    ]
+
+
+def test_users_export_returns_xlsx_with_header_row():
+    client, headers = _admin_client(809)
+    with client:
+        response = client.get("/api/admin/users/export", headers=headers)
+    assert response.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(response.content))
+    ws = wb.active
+    assert [cell.value for cell in ws[1]] == [
+        "tg_id", "username", "first_name", "checkpoint", "result_type", "test_attempt", "created_at",
+    ]
+
+
+def test_leads_export_rejected_for_non_admin():
+    client, headers = _client(810)
+    with client:
+        response = client.get("/api/admin/leads/export", headers=headers)
+    assert response.status_code == 403
