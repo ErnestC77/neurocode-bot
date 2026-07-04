@@ -11,6 +11,7 @@ from aiogram.types import BufferedInputFile, ChatMemberUpdated, Message
 
 from config import Config
 from db import crud
+from keyboards.inline import open_admin_panel_kb
 from payments import delivery
 from services.settings import get_effective_owner_chat_id, is_authorized_admin
 
@@ -129,3 +130,11 @@ async def remove_admin_cmd(message: Message, config: Config) -> None:
         return
     removed = await crud.remove_admin(int(parts[1]))
     await message.reply("Удалён." if removed else "Не был админом.")
+
+
+@router.message(Command("admin"))
+async def open_admin_panel(message: Message, config: Config) -> None:
+    if not await is_authorized_admin(message.from_user.id, config):
+        return
+    url = f"{config.webhook_base_url.rstrip('/')}/#/admin"
+    await message.answer("Админ-панель:", reply_markup=open_admin_panel_kb(url))

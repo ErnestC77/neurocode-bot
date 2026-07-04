@@ -29,3 +29,8 @@ def open_miniapp_kb(url: str) -> InlineKeyboardMarkup:
     используется в напоминаниях R1-R6. Mini App сам покажет нужный экран по
     чекпоинту пользователя, поэтому одна кнопка годится для всех кодов."""
     return _kb([InlineKeyboardButton(text="Открыть", web_app=WebAppInfo(url=url))])
+
+
+def open_admin_panel_kb(url: str) -> InlineKeyboardMarkup:
+    """Кнопка входа в веб-панель (/admin) — открывает Mini App на экране /admin."""
+    return _kb([InlineKeyboardButton(text="Открыть админ-панель", web_app=WebAppInfo(url=url))])
