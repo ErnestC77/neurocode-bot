@@ -26,6 +26,7 @@ def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
 # каждая строка молча отваливается, если колонка/индекс уже существует.
 _MIGRATIONS: list[str] = [
     "ALTER TABLE leads ADD COLUMN IF NOT EXISTS email VARCHAR(255)",
+    "ALTER TABLE leads ADD COLUMN IF NOT EXISTS worked_at TIMESTAMPTZ",
 ]
 
 

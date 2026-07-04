@@ -204,6 +204,18 @@ async def create_lead(tg_id: int, email: str) -> Lead | None:
         return lead
 
 
+async def toggle_lead_worked(tg_id: int) -> Lead | None:
+    """Переключает статус «отработан». None, если лида с таким tg_id нет."""
+    async with get_sessionmaker()() as session:
+        lead = await session.get(Lead, tg_id)
+        if lead is None:
+            return None
+        lead.worked_at = None if lead.worked_at is not None else utcnow()
+        await session.commit()
+        await session.refresh(lead)
+        return lead
+
+
 async def has_lead(tg_id: int) -> bool:
     async with get_sessionmaker()() as session:
         return await session.get(Lead, tg_id) is not None
