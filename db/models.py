@@ -63,9 +63,14 @@ class Purchase(Base):
     __tablename__ = "purchases"
     __table_args__ = (
         # Один ОПЛАЧЕННЫЙ продукт на юзера; сколько угодно брошенных pending разрешено.
+        # sqlite_where нужен отдельно от postgresql_where — без него SQLAlchemy
+        # молча создаёт на sqlite ПОЛНЫЙ (не частичный) уникальный индекс, и тесты
+        # на этой фикстуре не могут воспроизвести реальное поведение Postgres
+        # (несколько pending-покупок одного продукта — валидный кейс в проде).
         Index(
             "uq_purchase_paid_product", "user_tg_id", "product",
             unique=True, postgresql_where=text("status = 'paid'"),
+            sqlite_where=text("status = 'paid'"),
         ),
     )
 

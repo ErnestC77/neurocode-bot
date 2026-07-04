@@ -145,7 +145,12 @@ async def mark_paid(yk_payment_id: str) -> Purchase | None:
     """Идемпотентно помечает платёж оплаченным.
 
     Возвращает Purchase только при ПЕРВОЙ успешной обработке; ``None`` — если
-    платёж уже был обработан ранее или неизвестен (защита от повторных webhook).
+    платёж уже был обработан ранее, неизвестен (защита от повторных webhook),
+    либо этот же продукт для этого же пользователя уже оплачен другой
+    покупкой (uq_purchase_paid_product) — например, брошенный pending-дубль,
+    на который ЮKassa всё ещё шлёт повторные уведомления. Без этого catch
+    IntegrityError улетал бы наружу необработанным, webhook отвечал бы 500,
+    и ЮKassa продолжала бы ретраить один и тот же платёж часами.
     """
     async with get_sessionmaker()() as session:
         stmt = (
@@ -154,10 +159,14 @@ async def mark_paid(yk_payment_id: str) -> Purchase | None:
             .values(status="paid", paid_at=utcnow())
             .returning(Purchase)
         )
-        result = await session.execute(stmt)
-        purchase = result.scalar_one_or_none()
-        await session.commit()
-        return purchase
+        try:
+            result = await session.execute(stmt)
+            purchase = result.scalar_one_or_none()
+            await session.commit()
+            return purchase
+        except IntegrityError:
+            await session.rollback()
+            return None
 
 
 async def mark_delivered(purchase_id: int) -> None:
