@@ -14,6 +14,7 @@ export default function AdminPanel() {
   const [purchases, setPurchases] = useState<AdminPurchase[] | null>(null);
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [leadsFilter, setLeadsFilter] = useState<"all" | "new" | "worked">("all");
 
   useEffect(() => {
     adminApi.getLeads().then(setLeads).catch((err) => setError(errorMessage(err)));
@@ -45,30 +46,75 @@ export default function AdminPanel() {
 
       {tab === "leads" && (
         <section>
-          <button
-            onClick={() => adminApi.exportLeads().catch((err) => setError(errorMessage(err)))}
-            className="mb-2 rounded bg-white/10 px-3 py-1"
-          >
-            Экспорт в Excel
-          </button>
+          <div className="mb-2 flex items-center justify-between">
+            <button
+              onClick={() => adminApi.exportLeads().catch((err) => setError(errorMessage(err)))}
+              className="rounded bg-white/10 px-3 py-1"
+            >
+              Экспорт в Excel
+            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setLeadsFilter("all")}
+                className={leadsFilter === "all" ? "font-bold underline" : ""}
+              >
+                Все
+              </button>
+              <button
+                onClick={() => setLeadsFilter("new")}
+                className={leadsFilter === "new" ? "font-bold underline" : ""}
+              >
+                Новые
+              </button>
+              <button
+                onClick={() => setLeadsFilter("worked")}
+                className={leadsFilter === "worked" ? "font-bold underline" : ""}
+              >
+                Отработанные
+              </button>
+            </div>
+          </div>
           <table className="w-full text-left text-sm">
             <thead>
               <tr>
                 <th>Telegram ID</th>
                 <th>Username</th>
                 <th>Email</th>
+                <th>Отработан</th>
                 <th>Дата создания</th>
               </tr>
             </thead>
             <tbody>
-              {leads?.map((l) => (
-                <tr key={l.tg_id}>
-                  <td>{l.tg_id}</td>
-                  <td>{l.username ?? ""}</td>
-                  <td>{l.email ?? ""}</td>
-                  <td>{formatDateTime(l.created_at)}</td>
-                </tr>
-              ))}
+              {leads
+                ?.filter((l) => {
+                  if (leadsFilter === "new") return l.worked_at === null;
+                  if (leadsFilter === "worked") return l.worked_at !== null;
+                  return true;
+                })
+                .map((l) => (
+                  <tr key={l.tg_id}>
+                    <td>{l.tg_id}</td>
+                    <td>{l.username ?? ""}</td>
+                    <td>{l.email ?? ""}</td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={l.worked_at !== null}
+                        onChange={() =>
+                          adminApi
+                            .toggleLeadWorked(l.tg_id)
+                            .then((updated) =>
+                              setLeads((prev) =>
+                                prev?.map((x) => (x.tg_id === updated.tg_id ? updated : x)) ?? prev,
+                              ),
+                            )
+                            .catch((err) => setError(errorMessage(err)))
+                        }
+                      />
+                    </td>
+                    <td>{formatDateTime(l.created_at)}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </section>

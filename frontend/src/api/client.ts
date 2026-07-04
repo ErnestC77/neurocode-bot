@@ -46,6 +46,7 @@ export interface AdminLead {
   tg_id: number;
   username: string | null;
   email: string | null;
+  worked_at: string | null;
   created_at: string;
 }
 
@@ -121,6 +122,8 @@ function downloadBlob(blob: Blob, filename: string): void {
 
 export const adminApi = {
   getLeads: () => request<AdminLead[]>("/api/admin/leads"),
+  toggleLeadWorked: (tgId: number) =>
+    request<AdminLead>(`/api/admin/leads/${tgId}/worked`, { method: "POST" }),
   getPurchases: () => request<AdminPurchase[]>("/api/admin/purchases"),
   getUsers: () => request<AdminUser[]>("/api/admin/users"),
   exportLeads: async () => downloadBlob(await requestBlob("/api/admin/leads/export"), "leads.xlsx"),
