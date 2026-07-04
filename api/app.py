@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response
 from starlette.types import Scope
 
-from api.routers import funnel, ping
+from api.routers import admin, funnel, ping
 from config import Config
 from payments import webhook as yookassa_webhook
 
@@ -60,6 +60,7 @@ def create_app(bot: Bot, config: Config, bot_lifecycle: BotLifecycle) -> FastAPI
 
     app.include_router(ping.router)
     app.include_router(funnel.router)
+    app.include_router(admin.router)
     app.include_router(yookassa_webhook.router)
 
     # Собранный Mini App (Vite outDir=dist) — монтируется ПОСЛЕ /api/* и
