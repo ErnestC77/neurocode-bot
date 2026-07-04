@@ -149,8 +149,11 @@ def _xlsx_response(headers: list[str], rows: list[list[object]], filename_prefix
 @router.get("/leads/export")
 async def export_leads() -> StreamingResponse:
     leads = await _leads_out()
-    rows = [[l.tg_id, l.username or "", l.email or "", l.created_at.isoformat()] for l in leads]
-    return _xlsx_response(["tg_id", "username", "email", "created_at"], rows, "leads")
+    rows = [
+        [l.tg_id, l.username or "", l.email or "", "Да" if l.worked_at else "Нет", l.created_at.isoformat()]
+        for l in leads
+    ]
+    return _xlsx_response(["tg_id", "username", "email", "worked", "created_at"], rows, "leads")
 
 
 @router.get("/purchases/export")

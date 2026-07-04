@@ -179,7 +179,7 @@ def test_leads_export_returns_xlsx_with_header_row():
     )
     wb = openpyxl.load_workbook(io.BytesIO(response.content))
     ws = wb.active
-    assert [cell.value for cell in ws[1]] == ["tg_id", "username", "email", "created_at"]
+    assert [cell.value for cell in ws[1]] == ["tg_id", "username", "email", "worked", "created_at"]
 
 
 def test_purchases_export_returns_xlsx_with_header_row():
@@ -266,3 +266,5 @@ def test_toggle_lead_worked_rejected_for_non_admin():
     with client:
         response = client.post("/api/admin/leads/832/worked", headers=headers)
     assert response.status_code == 403
+
+
