@@ -359,3 +359,22 @@ async def ensure_admin_seeded(env_owner_chat_id: int | None) -> None:
     if await count_admins() > 0:
         return
     await add_admin(env_owner_chat_id, added_by=None)
+
+
+# ---------- Админ-панель: списки покупок и пользователей ----------
+
+async def list_purchases_with_user() -> list[tuple[Purchase, User | None]]:
+    """Все покупки с данными пользователя, свежие сверху — для админ-панели."""
+    async with get_sessionmaker()() as session:
+        rows = await session.execute(
+            select(Purchase, User)
+            .join(User, User.tg_id == Purchase.user_tg_id, isouter=True)
+            .order_by(Purchase.created_at.desc())
+        )
+        return [(purchase, user) for purchase, user in rows.all()]
+
+
+async def list_users() -> list[User]:
+    """Все пользователи, свежие сверху — для админ-панели."""
+    async with get_sessionmaker()() as session:
+        return list(await session.scalars(select(User).order_by(User.created_at.desc())))
