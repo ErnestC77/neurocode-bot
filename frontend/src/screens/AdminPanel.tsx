@@ -44,7 +44,10 @@ export default function AdminPanel() {
 
       {tab === "leads" && (
         <section>
-          <button onClick={() => adminApi.exportLeads()} className="mb-2 rounded bg-white/10 px-3 py-1">
+          <button
+            onClick={() => adminApi.exportLeads().catch((err) => setError(errorMessage(err)))}
+            className="mb-2 rounded bg-white/10 px-3 py-1"
+          >
             Экспорт в Excel
           </button>
           <table className="w-full text-left text-sm">
@@ -72,7 +75,10 @@ export default function AdminPanel() {
 
       {tab === "purchases" && (
         <section>
-          <button onClick={() => adminApi.exportPurchases()} className="mb-2 rounded bg-white/10 px-3 py-1">
+          <button
+            onClick={() => adminApi.exportPurchases().catch((err) => setError(errorMessage(err)))}
+            className="mb-2 rounded bg-white/10 px-3 py-1"
+          >
             Экспорт в Excel
           </button>
           <table className="w-full text-left text-sm">
@@ -108,7 +114,10 @@ export default function AdminPanel() {
 
       {tab === "users" && (
         <section>
-          <button onClick={() => adminApi.exportUsers()} className="mb-2 rounded bg-white/10 px-3 py-1">
+          <button
+            onClick={() => adminApi.exportUsers().catch((err) => setError(errorMessage(err)))}
+            className="mb-2 rounded bg-white/10 px-3 py-1"
+          >
             Экспорт в Excel
           </button>
           <table className="w-full text-left text-sm">
