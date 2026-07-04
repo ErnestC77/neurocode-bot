@@ -130,6 +130,7 @@ def test_leads_returns_joined_user_fields_for_real_lead():
     assert lead["tg_id"] == 822
     assert lead["username"] == "lead_anna"
     assert lead["email"] == "someone@example.com"
+    assert lead["worked_at"] is None
     assert lead["created_at"] is not None
 
 
@@ -233,4 +234,35 @@ def test_leads_export_rejected_for_non_admin():
     client, headers = _client(810)
     with client:
         response = client.get("/api/admin/leads/export", headers=headers)
+    assert response.status_code == 403
+
+
+def test_toggle_lead_worked_flips_status_and_back():
+    client, headers = _admin_client_with_username(830, "lead_toggle")
+    with client:
+        client.post("/api/funnel/consult/book", headers=headers)
+        client.post(
+            "/api/funnel/consult/email", headers=headers, json={"email": "toggle@example.com"},
+        )
+
+        first = client.post("/api/admin/leads/830/worked", headers=headers)
+        assert first.status_code == 200
+        assert first.json()["worked_at"] is not None
+
+        second = client.post("/api/admin/leads/830/worked", headers=headers)
+        assert second.status_code == 200
+        assert second.json()["worked_at"] is None
+
+
+def test_toggle_lead_worked_404_for_unknown_lead():
+    client, headers = _admin_client(831)
+    with client:
+        response = client.post("/api/admin/leads/999999/worked", headers=headers)
+    assert response.status_code == 404
+
+
+def test_toggle_lead_worked_rejected_for_non_admin():
+    client, headers = _client(832)
+    with client:
+        response = client.post("/api/admin/leads/832/worked", headers=headers)
     assert response.status_code == 403

@@ -6,13 +6,14 @@ from __future__ import annotations
 import io
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from pydantic import BaseModel
 
 from api.deps import current_admin
 from db import crud
+from db.models import Lead, User
 
 router = APIRouter(prefix="/api/admin", dependencies=[Depends(current_admin)])
 
@@ -21,6 +22,7 @@ class LeadOut(BaseModel):
     tg_id: int
     username: str | None
     email: str | None
+    worked_at: datetime | None
     created_at: datetime
 
 
@@ -45,16 +47,19 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
+def _lead_out(lead: Lead, user: User | None) -> LeadOut:
+    return LeadOut(
+        tg_id=lead.user_tg_id, username=user.username if user else None,
+        email=lead.email, worked_at=lead.worked_at, created_at=lead.created_at,
+    )
+
+
 async def _leads_out() -> list[LeadOut]:
     # crud.list_leads() сортирует по возрастанию (для CSV-экспорта /export_leads,
     # где это уже устоявшийся порядок) — для панели разворачиваем в свежие сверху,
     # как у purchases/users, не трогая сам crud (не ломаем существующий экспорт).
     leads = sorted(await crud.list_leads(), key=lambda pair: pair[0].created_at, reverse=True)
-    return [
-        LeadOut(tg_id=lead.user_tg_id, username=user.username if user else None,
-               email=lead.email, created_at=lead.created_at)
-        for lead, user in leads
-    ]
+    return [_lead_out(lead, user) for lead, user in leads]
 
 
 async def _purchases_out() -> list[PurchaseOut]:
@@ -83,6 +88,15 @@ async def _users_out() -> list[UserOut]:
 @router.get("/leads", response_model=list[LeadOut])
 async def get_leads() -> list[LeadOut]:
     return await _leads_out()
+
+
+@router.post("/leads/{tg_id}/worked", response_model=LeadOut)
+async def toggle_lead(tg_id: int) -> LeadOut:
+    lead = await crud.toggle_lead_worked(tg_id)
+    if lead is None:
+        raise HTTPException(status_code=404, detail="lead not found")
+    user = await crud.get_user(tg_id)
+    return _lead_out(lead, user)
 
 
 @router.get("/purchases", response_model=list[PurchaseOut])
