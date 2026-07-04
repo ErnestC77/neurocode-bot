@@ -133,8 +133,12 @@ async def get_practicum_chat_id() -> int | str | None:
 
 
 async def is_authorized_admin(tg_id: int, config: Config) -> bool:
-    """Доступ к /settings и /export_leads: env-владелец ИЛИ текущий БД-владелец."""
+    """Доступ к /settings, /export_leads и веб-панели: env-владелец (бутстрап,
+    страховка от самоблокировки) ИЛИ запись в таблице admins.
+
+    Не путать с get_effective_owner_chat_id() выше — та функция отвечает
+    только за адресата уведомлений (лиды/оплаты), не за проверку доступа.
+    """
     if config.owner_chat_id and tg_id == config.owner_chat_id:
         return True
-    effective = await get_effective_owner_chat_id(config)
-    return effective is not None and tg_id == effective
+    return await crud.is_admin(tg_id)

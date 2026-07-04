@@ -122,7 +122,10 @@ async def settings_db():
     database.init_engine("sqlite+aiosqlite:///:memory:")
     engine = database._engine
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all, tables=[Base.metadata.tables["bot_settings"]])
+        await conn.run_sync(Base.metadata.create_all, tables=[
+            Base.metadata.tables["bot_settings"],
+            Base.metadata.tables["admins"],
+        ])
     yield
     await engine.dispose()
     database._engine = None
@@ -143,3 +146,27 @@ def test_practicum_content_settings_registered():
         spec = SETTINGS[key]
         assert spec.value_type is str
         assert spec.default == ""
+
+
+import dataclasses
+
+from conftest import _test_config
+from services.settings import is_authorized_admin
+
+
+async def test_is_authorized_admin_true_for_env_owner(settings_db):
+    config = dataclasses.replace(_test_config(), owner_chat_id=777)
+    assert await is_authorized_admin(777, config) is True
+
+
+async def test_is_authorized_admin_false_for_stranger(settings_db):
+    config = _test_config()
+    assert await is_authorized_admin(999, config) is False
+
+
+async def test_is_authorized_admin_true_for_db_admin(settings_db):
+    from db import crud
+
+    await crud.add_admin(555, added_by=None)
+    config = _test_config()
+    assert await is_authorized_admin(555, config) is True

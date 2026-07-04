@@ -20,6 +20,7 @@ from api.app import create_app
 from bot import run_bot_polling
 from config import Config, load_config
 from db.database import init_db, init_engine
+from db import crud
 
 logger = logging.getLogger("asgi")
 
@@ -33,6 +34,8 @@ async def _bot_lifecycle(bot: Bot, config: Config) -> Callable[[], Awaitable[Non
     logger.info("lifespan: init_db() начат")
     await init_db()
     logger.info("lifespan: init_db() завершён")
+
+    await crud.ensure_admin_seeded(config.owner_chat_id)
 
     # Постоянная кнопка запуска Mini App рядом с полем ввода — не разовая
     # inline-кнопка в сообщении. Ставится один раз на старте процесса.
