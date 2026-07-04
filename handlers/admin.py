@@ -25,6 +25,15 @@ async def get_file_id(message: Message, config: Config) -> None:
     await message.reply(f"file_id: <code>{message.document.file_id}</code>")
 
 
+@router.message(F.video)
+async def get_video_file_id(message: Message, config: Config) -> None:
+    """Владелец присылает видео практикума боту — бот отвечает file_id для
+    practicum_video_file_id в /settings."""
+    if not await is_authorized_admin(message.from_user.id, config):
+        return
+    await message.reply(f"file_id: <code>{message.video.file_id}</code>")
+
+
 @router.message(F.forward_from_chat)
 async def get_forwarded_chat_id(message: Message, config: Config) -> None:
     """Владелец пересылает любое сообщение из канала — бот отвечает его chat_id
