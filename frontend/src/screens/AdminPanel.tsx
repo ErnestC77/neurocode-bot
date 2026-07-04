@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { adminApi, ApiError, type AdminLead, type AdminPurchase, type AdminUser } from "../api/client";
+import { formatDateTime } from "../lib/utils";
 
 type Tab = "leads" | "purchases" | "users";
 
@@ -53,10 +54,10 @@ export default function AdminPanel() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr>
-                <th>tg_id</th>
-                <th>username</th>
-                <th>email</th>
-                <th>created_at</th>
+                <th>Telegram ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Дата создания</th>
               </tr>
             </thead>
             <tbody>
@@ -65,7 +66,7 @@ export default function AdminPanel() {
                   <td>{l.tg_id}</td>
                   <td>{l.username ?? ""}</td>
                   <td>{l.email ?? ""}</td>
-                  <td>{l.created_at}</td>
+                  <td>{formatDateTime(l.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -84,14 +85,14 @@ export default function AdminPanel() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr>
-                <th>id</th>
-                <th>tg_id</th>
-                <th>username</th>
-                <th>product</th>
-                <th>amount_rub</th>
-                <th>status</th>
-                <th>paid_at</th>
-                <th>delivered_at</th>
+                <th>ID</th>
+                <th>Telegram ID</th>
+                <th>Username</th>
+                <th>Продукт</th>
+                <th>Сумма, ₽</th>
+                <th>Статус</th>
+                <th>Оплачено</th>
+                <th>Доставлено</th>
               </tr>
             </thead>
             <tbody>
@@ -103,8 +104,8 @@ export default function AdminPanel() {
                   <td>{p.product}</td>
                   <td>{p.amount_rub}</td>
                   <td>{p.status}</td>
-                  <td>{p.paid_at ?? ""}</td>
-                  <td>{p.delivered_at ?? ""}</td>
+                  <td>{p.paid_at ? formatDateTime(p.paid_at) : ""}</td>
+                  <td>{p.delivered_at ? formatDateTime(p.delivered_at) : ""}</td>
                 </tr>
               ))}
             </tbody>
@@ -123,13 +124,13 @@ export default function AdminPanel() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr>
-                <th>tg_id</th>
-                <th>username</th>
-                <th>first_name</th>
-                <th>checkpoint</th>
-                <th>result_type</th>
-                <th>test_attempt</th>
-                <th>created_at</th>
+                <th>Telegram ID</th>
+                <th>Username</th>
+                <th>Имя</th>
+                <th>Этап воронки</th>
+                <th>Результат теста</th>
+                <th>Попытка</th>
+                <th>Дата регистрации</th>
               </tr>
             </thead>
             <tbody>
@@ -141,7 +142,7 @@ export default function AdminPanel() {
                   <td>{u.checkpoint}</td>
                   <td>{u.result_type ?? ""}</td>
                   <td>{u.test_attempt}</td>
-                  <td>{u.created_at}</td>
+                  <td>{formatDateTime(u.created_at)}</td>
                 </tr>
               ))}
             </tbody>
