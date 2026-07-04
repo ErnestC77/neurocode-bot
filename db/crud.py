@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from db.database import get_sessionmaker
-from db.models import (AdminPendingEdit, Answer, BotSetting, Lead, Purchase,
+from db.models import (Admin, AdminPendingEdit, Answer, BotSetting, Lead, Purchase,
                        ReminderSent, User, utcnow)
 
 
@@ -314,3 +314,48 @@ async def clear_pending_setting_edit(admin_tg_id: int) -> None:
         if pending:
             await session.delete(pending)
             await session.commit()
+
+
+# ---------- Админы (доступ к /settings, /export_leads, веб-панели) ----------
+
+async def is_admin(tg_id: int) -> bool:
+    async with get_sessionmaker()() as session:
+        return await session.get(Admin, tg_id) is not None
+
+
+async def add_admin(tg_id: int, added_by: int | None) -> bool:
+    """True, если добавлен; False, если уже был админом (идемпотентно)."""
+    async with get_sessionmaker()() as session:
+        if await session.get(Admin, tg_id) is not None:
+            return False
+        session.add(Admin(tg_id=tg_id, added_by=added_by))
+        await session.commit()
+        return True
+
+
+async def remove_admin(tg_id: int) -> bool:
+    """True, если удалён; False, если не был админом."""
+    async with get_sessionmaker()() as session:
+        admin = await session.get(Admin, tg_id)
+        if admin is None:
+            return False
+        await session.delete(admin)
+        await session.commit()
+        return True
+
+
+async def count_admins() -> int:
+    async with get_sessionmaker()() as session:
+        result = await session.execute(select(func.count()).select_from(Admin))
+        return result.scalar_one()
+
+
+async def ensure_admin_seeded(env_owner_chat_id: int | None) -> None:
+    """Если таблица admins пуста и задан env owner_chat_id — сделать его первым
+    админом. Идемпотентно, безопасно вызывать на каждом старте процесса
+    (см. asgi.py::_bot_lifecycle)."""
+    if env_owner_chat_id is None:
+        return
+    if await count_admins() > 0:
+        return
+    await add_admin(env_owner_chat_id, added_by=None)

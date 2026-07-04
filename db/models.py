@@ -81,6 +81,17 @@ class Purchase(Base):
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class Admin(Base):
+    """Админ веб-панели/бот-команд — может быть несколько, в отличие от
+    единственного owner_chat_id (см. services/settings.py — тот отвечает за
+    адресата уведомлений, это другая роль)."""
+    __tablename__ = "admins"
+
+    tg_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    added_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Lead(Base):
     """Заявка на бесплатную консультацию — одна на пользователя."""
     __tablename__ = "leads"

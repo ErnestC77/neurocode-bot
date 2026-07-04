@@ -57,3 +57,21 @@ async def _sqlite_lifecycle(bot, config):
 
 def init_data_for(tg_id: int) -> str:
     return _sign({"auth_date": str(int(time.time())), "user": f'{{"id": {tg_id}}}'})
+
+
+import pytest_asyncio
+
+
+@pytest_asyncio.fixture
+async def full_db():
+    """Изолированный sqlite в памяти со всей схемой — для тестов db/crud.py,
+    которым нужно несколько таблиц сразу (в отличие от settings_db в
+    test_settings.py, которой хватает одной bot_settings)."""
+    database.init_engine("sqlite+aiosqlite:///:memory:")
+    engine = database._engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    await engine.dispose()
+    database._engine = None
+    database._sessionmaker = None
