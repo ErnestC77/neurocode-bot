@@ -170,3 +170,38 @@ async def test_is_authorized_admin_true_for_db_admin(settings_db):
     await crud.add_admin(555, added_by=None)
     config = _test_config()
     assert await is_authorized_admin(555, config) is True
+
+
+async def test_get_file_list_empty_when_unset(settings_db):
+    assert await settings.get_file_list("book_file_id") == []
+
+
+async def test_add_file_id_then_get_file_list(settings_db):
+    n = await settings.add_file_id("book_file_id", "file-1")
+    assert n == 1
+    assert await settings.get_file_list("book_file_id") == ["file-1"]
+
+
+async def test_add_file_id_appends_to_existing(settings_db):
+    await settings.add_file_id("book_file_id", "file-1")
+    n = await settings.add_file_id("book_file_id", "file-2")
+    assert n == 2
+    assert await settings.get_file_list("book_file_id") == ["file-1", "file-2"]
+
+
+def test_multi_flag_set_for_file_settings():
+    for key in ("book_file_id", "practicum_workbook_file_id", "practicum_video_file_id"):
+        assert SETTINGS[key].multi is True
+
+
+def test_multi_flag_false_for_non_file_settings():
+    assert SETTINGS["practicum_video_url"].multi is False
+    assert SETTINGS["book_price_rub"].multi is False
+
+
+def test_format_multi_count_zero_is_ne_zadano():
+    assert settings.format_multi_count(0) == "не задано"
+
+
+def test_format_multi_count_nonzero():
+    assert settings.format_multi_count(3) == "3 файлов"

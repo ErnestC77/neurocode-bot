@@ -25,17 +25,18 @@ class SettingSpec:
     default: str
     suffix: str = ""  # добавляется к значению при отображении в /settings
     min_value: int | None = None  # нижняя граница для int-настроек (None = без ограничения)
+    multi: bool = False  # несколько file_id через перенос строки вместо одного значения
 
 
 SETTINGS: dict[str, SettingSpec] = {
     "book_file_id": SettingSpec(
-        "book_file_id", "📄 File ID книги", str, ""),
+        "book_file_id", "📄 File ID книги", str, "", multi=True),
     "practicum_channel_id": SettingSpec(
         "practicum_channel_id", "📢 ID канала практикума", str, ""),
     "practicum_workbook_file_id": SettingSpec(
-        "practicum_workbook_file_id", "📓 File ID рабочей тетради", str, ""),
+        "practicum_workbook_file_id", "📓 File ID рабочей тетради", str, "", multi=True),
     "practicum_video_file_id": SettingSpec(
-        "practicum_video_file_id", "🎬 File ID видео", str, ""),
+        "practicum_video_file_id", "🎬 File ID видео", str, "", multi=True),
     "practicum_video_url": SettingSpec(
         "practicum_video_url", "🔗 Ссылка на видео (пока файл не загружен)", str, ""),
     "book_price_rub": SettingSpec(
@@ -75,6 +76,11 @@ def format_value(spec: SettingSpec, raw: str | None) -> str:
     if not value:
         return "не задан"
     return f"{value}{spec.suffix}"
+
+
+def format_multi_count(count: int) -> str:
+    """Человекочитаемое количество файлов для multi-настроек в меню /settings."""
+    return "не задано" if count == 0 else f"{count} файлов"
 
 
 def _parse_chat_id(raw: str) -> int | str | None:
@@ -120,6 +126,20 @@ async def set_value(key: str, raw: str) -> None:
     spec = SETTINGS[key]
     normalized = cast_value(spec, raw)
     await crud.set_setting_value(key, normalized)
+
+
+async def get_file_list(key: str) -> list[str]:
+    """Для multi-настроек: список file_id (пустой список, если не задано)."""
+    raw = await get_str(key)
+    return [line.strip() for line in raw.splitlines() if line.strip()]
+
+
+async def add_file_id(key: str, file_id: str) -> int:
+    """Добавляет file_id в конец списка multi-настройки. Возвращает новую длину списка."""
+    current = await get_file_list(key)
+    current.append(file_id)
+    await crud.set_setting_value(key, "\n".join(current))
+    return len(current)
 
 
 async def get_effective_owner_chat_id(config: Config) -> int | None:
