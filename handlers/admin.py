@@ -13,26 +13,58 @@ from config import Config
 from db import crud
 from keyboards.inline import open_admin_panel_kb
 from payments import delivery
-from services.settings import get_effective_owner_chat_id, is_authorized_admin
+from services.settings import SETTINGS, add_file_id, get_effective_owner_chat_id, is_authorized_admin
 
 router = Router()
+
+_DOCUMENT_SETTINGS = {"book_file_id", "practicum_workbook_file_id"}
+_VIDEO_SETTINGS = {"practicum_video_file_id"}
+
+
+async def _try_append_to_pending(message: Message, file_id: str, allowed_keys: set[str]) -> bool:
+    """Если у отправителя есть pending edit ровно на одну из allowed_keys —
+    добавляет file_id в список этой настройки и отвечает подтверждением.
+
+    allowed_keys ограничивает, какие multi-настройки принимают этот тип файла
+    (документ vs видео) — без этого видео, присланное во время редактирования
+    book_file_id, испортило бы список PDF-файлов книги.
+
+    True, если обработано так; False — вызывающий хендлер должен ответить
+    сырым file_id как раньше (нет активного релевантного pending edit).
+    """
+    pending_key = await crud.get_pending_setting_edit(message.from_user.id)
+    if pending_key not in allowed_keys:
+        return False
+    spec = SETTINGS[pending_key]
+    count = await add_file_id(pending_key, file_id)
+    await message.reply(f"Добавлено ({count}): {spec.label}")
+    return True
 
 
 @router.message(F.document)
 async def get_file_id(message: Message, config: Config) -> None:
-    """Владелец присылает PDF книги боту — бот отвечает file_id для BOOK_FILE_ID в /settings."""
+    """Владелец присылает PDF — если активно редактирование book_file_id/
+    practicum_workbook_file_id, файл добавляется в список; иначе бот просто
+    отвечает file_id текстом для ручной вставки в /settings."""
     if not await is_authorized_admin(message.from_user.id, config):
         return
-    await message.reply(f"file_id: <code>{message.document.file_id}</code>")
+    file_id = message.document.file_id
+    if await _try_append_to_pending(message, file_id, _DOCUMENT_SETTINGS):
+        return
+    await message.reply(f"file_id: <code>{file_id}</code>")
 
 
 @router.message(F.video)
 async def get_video_file_id(message: Message, config: Config) -> None:
-    """Владелец присылает видео практикума боту — бот отвечает file_id для
-    practicum_video_file_id в /settings."""
+    """Владелец присылает видео практикума — если активно редактирование
+    practicum_video_file_id, видео добавляется в список; иначе бот отвечает
+    file_id текстом."""
     if not await is_authorized_admin(message.from_user.id, config):
         return
-    await message.reply(f"file_id: <code>{message.video.file_id}</code>")
+    file_id = message.video.file_id
+    if await _try_append_to_pending(message, file_id, _VIDEO_SETTINGS):
+        return
+    await message.reply(f"file_id: <code>{file_id}</code>")
 
 
 @router.message(F.forward_from_chat)
