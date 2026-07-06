@@ -52,9 +52,10 @@ async def _deliver_practicum(bot: Bot, config: Config, purchase: Purchase) -> bo
     await bot.send_message(purchase.user_tg_id, text,
                            reply_markup=after_product_kb(PRACTICUM, available, config.webhook_base_url))
 
-    workbook_file_id = await settings.get_str("practicum_workbook_file_id")
-    if workbook_file_id:
-        await bot.send_document(purchase.user_tg_id, workbook_file_id, protect_content=True)
+    workbook_file_ids = await settings.get_file_list("practicum_workbook_file_id")
+    if workbook_file_ids:
+        for file_id in workbook_file_ids:
+            await bot.send_document(purchase.user_tg_id, file_id, protect_content=True)
     else:
         logger.error(
             "practicum_workbook_file_id не задан в /settings, не могу отправить тетрадь purchase=%s",
@@ -64,10 +65,11 @@ async def _deliver_practicum(bot: Bot, config: Config, purchase: Purchase) -> bo
     # file_id приоритетен над url: как только видео будет загружено в self-hosted
     # Bot API (снимает лимит 50 МБ облачного API) и file_id вписан в /settings,
     # доставка сама переключится с ссылки на нативный файл — без правок кода.
-    video_file_id = await settings.get_str("practicum_video_file_id")
+    video_file_ids = await settings.get_file_list("practicum_video_file_id")
     video_url = await settings.get_str("practicum_video_url")
-    if video_file_id:
-        await bot.send_video(purchase.user_tg_id, video_file_id, protect_content=True)
+    if video_file_ids:
+        for file_id in video_file_ids:
+            await bot.send_video(purchase.user_tg_id, file_id, protect_content=True)
     elif video_url:
         await bot.send_message(
             purchase.user_tg_id, "Видео к практикуму:",
@@ -87,10 +89,11 @@ async def _deliver_book(bot: Bot, config: Config, purchase: Purchase) -> bool:
     available = await get_available_products(purchase.user_tg_id)
     await bot.send_message(purchase.user_tg_id, TEXTS["M8.3"],
                            reply_markup=after_product_kb(BOOK, available, config.webhook_base_url))
-    book_file_id = await settings.get_str("book_file_id")
-    if not book_file_id:
+    book_file_ids = await settings.get_file_list("book_file_id")
+    if not book_file_ids:
         logger.error("book_file_id не задан в /settings, не могу отправить файл purchase=%s",
                      purchase.id)
         return False
-    await bot.send_document(purchase.user_tg_id, book_file_id, protect_content=True)
+    for file_id in book_file_ids:
+        await bot.send_document(purchase.user_tg_id, file_id, protect_content=True)
     return True
