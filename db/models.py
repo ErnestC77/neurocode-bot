@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from sqlalchemy import (BigInteger, DateTime, ForeignKey, Index, Integer,
-                        SmallInteger, String, UniqueConstraint, text)
+                        SmallInteger, String, Text, UniqueConstraint, text)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -126,7 +126,11 @@ class BotSetting(Base):
     __tablename__ = "bot_settings"
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
-    value: Mapped[str] = mapped_column(String(512))
+    # TEXT, не VARCHAR(512): multi-настройки (services/settings.py::get_file_list)
+    # хранят несколько file_id через перенос строки в этом же поле — 512 символов
+    # хватает всего на ~5-6 file_id, после чего запись падала бы необработанной
+    # StringDataRightTruncation.
+    value: Mapped[str] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
