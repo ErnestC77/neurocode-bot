@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type FunnelState } from "@/api/client";
-import { BUY_BUTTON_LABEL, PRODUCT_DETAIL_TEXTS } from "@/content/texts";
+import { BACK_TO_OFFER_LABEL, BUY_BUTTON_LABEL, PRODUCT_DETAIL_TEXTS } from "@/content/texts";
 import { openLink } from "@/lib/telegram";
 
 type Product = "book" | "practicum";
@@ -9,12 +9,13 @@ interface Props {
   product: Product;
   price: number;
   onPaymentSettled: (state: FunnelState) => void;
+  onBack: () => void;
 }
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 120000;
 
-export default function ProductDetail({ product, price, onPaymentSettled }: Props) {
+export default function ProductDetail({ product, price, onPaymentSettled, onBack }: Props) {
   const [waiting, setWaiting] = useState(false);
   const [buying, setBuying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,12 +116,17 @@ export default function ProductDetail({ product, price, onPaymentSettled }: Prop
           </button>
         </div>
       ) : (
-        <button
-          onClick={handleBuy}
-          className="mt-6 w-full rounded-xl bg-gold py-3 text-center font-semibold text-navy"
-        >
-          {`${BUY_BUTTON_LABEL[product]} за ${price} ₽`}
-        </button>
+        <>
+          <button
+            onClick={handleBuy}
+            className="mt-6 w-full rounded-xl bg-gold py-3 text-center font-semibold text-navy"
+          >
+            {`${BUY_BUTTON_LABEL[product]} за ${price} ₽`}
+          </button>
+          <button onClick={onBack} className="mt-4 text-center text-sm text-gold/70 underline">
+            {BACK_TO_OFFER_LABEL}
+          </button>
+        </>
       )}
     </div>
   );
