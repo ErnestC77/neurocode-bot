@@ -93,6 +93,7 @@ export const api = {
     request<PurchaseInitiatedOut>(`/api/funnel/product/${product}/buy`, { method: "POST" }),
   bookConsult: () => postFunnel("consult/book"),
   viewConsult: () => postFunnel("consult/view"),
+  goBack: () => postFunnel("back"),
   submitConsultEmail: (email: string) =>
     request<FunnelState>("/api/funnel/consult/email", {
       method: "POST",
