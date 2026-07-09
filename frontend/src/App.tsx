@@ -82,10 +82,19 @@ function FunnelApp() {
     case "product-detail": {
       const product = state.checkpoint === "book_viewed" ? "book" : "practicum";
       const price = product === "book" ? state.book_price_rub : state.practicum_price_rub;
-      return <ProductDetail product={product} price={price} onPaymentSettled={setState} />;
+      return (
+        <ProductDetail
+          product={product}
+          price={price}
+          onPaymentSettled={setState}
+          onBack={() => runAction(api.goBack)}
+        />
+      );
     }
     case "consult-detail":
-      return <ConsultDetail onBook={() => runAction(api.bookConsult)} />;
+      return (
+        <ConsultDetail onBook={() => runAction(api.bookConsult)} onBack={() => runAction(api.goBack)} />
+      );
     case "consult-email-input":
       return (
         <ConsultEmailInput
