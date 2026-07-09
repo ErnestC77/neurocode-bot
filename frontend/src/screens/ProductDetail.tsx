@@ -123,9 +123,11 @@ export default function ProductDetail({ product, price, onPaymentSettled, onBack
           >
             {`${BUY_BUTTON_LABEL[product]} за ${price} ₽`}
           </button>
-          <button onClick={onBack} className="mt-4 text-center text-sm text-gold/70 underline">
-            {BACK_TO_OFFER_LABEL}
-          </button>
+          {!buying && (
+            <button onClick={onBack} className="mt-4 text-center text-sm text-gold/70 underline">
+              {BACK_TO_OFFER_LABEL}
+            </button>
+          )}
         </>
       )}
     </div>
