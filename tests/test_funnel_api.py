@@ -217,3 +217,35 @@ def test_consult_email_valid_creates_lead_and_sets_idle():
         )
     assert response.status_code == 200
     assert response.json()["checkpoint"] == "idle"
+
+
+def test_back_from_practicum_viewed_sets_idle():
+    client, headers = _client(718)
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        for q, s in enumerate([2, 2, 0, 1, 0, 2, 1], start=1):
+            client.post("/api/funnel/answers", headers=headers, json={"question_no": q, "score": s})
+        client.post("/api/funnel/product/practicum/view", headers=headers)
+        response = client.post("/api/funnel/back", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["checkpoint"] == "idle"
+
+
+def test_back_from_consult_viewed_sets_idle():
+    client, headers = _client(719)
+    with client:
+        client.post("/api/funnel/consent", headers=headers)
+        for q, s in enumerate([2, 2, 0, 1, 0, 2, 1], start=1):
+            client.post("/api/funnel/answers", headers=headers, json={"question_no": q, "score": s})
+        client.post("/api/funnel/consult/view", headers=headers)
+        response = client.post("/api/funnel/back", headers=headers)
+    assert response.json()["checkpoint"] == "idle"
+
+
+def test_back_from_unrelated_checkpoint_is_a_noop():
+    client, headers = _client(720)
+    with client:
+        client.post("/api/funnel/consult/book", headers=headers)  # -> awaiting_email
+        response = client.post("/api/funnel/back", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["checkpoint"] == "awaiting_email"  # не сдвинулся на idle

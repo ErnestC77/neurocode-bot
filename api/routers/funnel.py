@@ -47,6 +47,11 @@ _PRODUCT_LABELS: dict[str, str] = {
     "book": "Книга «Целеполагание»",
     "practicum": "Практикум «Найди свой код»",
 }
+_BACK_ELIGIBLE_CHECKPOINTS: set[str] = {
+    checkpoints.PRACTICUM_VIEWED,
+    checkpoints.BOOK_VIEWED,
+    checkpoints.CONSULT_VIEWED,
+}
 
 
 class PurchaseInitiatedOut(BaseModel):
@@ -196,4 +201,12 @@ async def submit_consult_email(
             await notify_lead(bot, config, lead)
         except Exception:  # noqa: BLE001 — не выгрузилось сейчас, ретрай подхватит scheduler
             logger.exception("Не удалось выгрузить лид user=%s", tg_id)
+    return await _build_state(tg_id)
+
+
+@router.post("/back")
+async def go_back(tg_id: int = Depends(current_client)) -> FunnelStateOut:
+    user = await crud.get_user(tg_id)
+    if user is not None and user.checkpoint in _BACK_ELIGIBLE_CHECKPOINTS:
+        await crud.set_checkpoint(tg_id, checkpoints.IDLE)
     return await _build_state(tg_id)
