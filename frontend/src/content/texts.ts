@@ -296,3 +296,39 @@ export const M7_2_TEXT = `Принято! Передаю твой контакт
 export const M9_TEXT = "С чего ещё можно начать, выбери, что откликается:";
 
 export const BACK_TO_OFFER_LABEL = "← Другие варианты";
+
+// Примечания под CTA-кнопками со ссылками на юридические документы
+// (frontend/public/legal/*.html, раздаются статикой с домена Mini App).
+// Акцепт Оферты происходит оплатой, поэтому ссылка обязана быть видна ДО
+// нажатия «Купить»; Политика — везде, где пользователь оставляет данные.
+export interface LegalNoteText {
+  prefix: string;
+  linkLabel: string;
+  doc: "oferta" | "privacy";
+}
+
+export const LEGAL_NOTES: Record<
+  "consent" | "purchase" | "consultBook" | "consultEmail",
+  LegalNoteText
+> = {
+  consent: {
+    prefix: "Нажимая кнопку, ты соглашаешься с ",
+    linkLabel: "Политикой обработки персональных данных",
+    doc: "privacy",
+  },
+  purchase: {
+    prefix: "Оплачивая, ты принимаешь ",
+    linkLabel: "условия Оферты",
+    doc: "oferta",
+  },
+  consultBook: {
+    prefix: "Записываясь, ты принимаешь ",
+    linkLabel: "условия Оферты",
+    doc: "oferta",
+  },
+  consultEmail: {
+    prefix: "Отправляя email, ты соглашаешься с ",
+    linkLabel: "Политикой обработки персональных данных",
+    doc: "privacy",
+  },
+};

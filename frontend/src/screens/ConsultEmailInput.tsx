@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ApiError, type FunnelState } from "@/api/client";
+import LegalNote from "@/components/LegalNote";
 import {
   CONSULT_CONTINUE_BUTTON_LABEL,
   CONSULT_EMAIL_INVALID,
@@ -69,12 +70,15 @@ export default function ConsultEmailInput({ onSubmit, onDone, onError }: Props) 
         />
         {invalid && <p className="mt-2 text-sm text-red-400">{CONSULT_EMAIL_INVALID}</p>}
       </div>
-      <button
-        onClick={handleSubmit}
-        className="mt-6 w-full rounded-xl bg-gold py-3 text-center font-semibold text-navy"
-      >
-        Отправить
-      </button>
+      <div>
+        <button
+          onClick={handleSubmit}
+          className="mt-6 w-full rounded-xl bg-gold py-3 text-center font-semibold text-navy"
+        >
+          Отправить
+        </button>
+        <LegalNote kind="consultEmail" />
+      </div>
     </div>
   );
 }

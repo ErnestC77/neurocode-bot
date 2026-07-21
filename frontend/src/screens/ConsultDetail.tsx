@@ -1,3 +1,4 @@
+import LegalNote from "@/components/LegalNote";
 import { BACK_TO_OFFER_LABEL, CONSULT_BOOK_BUTTON_LABEL, CONSULT_INTRO_TEXT } from "@/content/texts";
 
 interface Props {
@@ -18,6 +19,7 @@ export default function ConsultDetail({ onBook, onBack }: Props) {
         >
           {CONSULT_BOOK_BUTTON_LABEL}
         </button>
+        <LegalNote kind="consultBook" />
         <button onClick={onBack} className="mt-4 w-full text-center text-sm text-gold/70 underline">
           {BACK_TO_OFFER_LABEL}
         </button>

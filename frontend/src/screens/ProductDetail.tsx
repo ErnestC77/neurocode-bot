@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type FunnelState } from "@/api/client";
+import LegalNote from "@/components/LegalNote";
 import { BACK_TO_OFFER_LABEL, BUY_BUTTON_LABEL, PRODUCT_DETAIL_TEXTS } from "@/content/texts";
 import { openLink } from "@/lib/telegram";
 
@@ -123,6 +124,7 @@ export default function ProductDetail({ product, price, onPaymentSettled, onBack
           >
             {`${BUY_BUTTON_LABEL[product]} за ${price} ₽`}
           </button>
+          <LegalNote kind="purchase" />
           {!buying && (
             <button onClick={onBack} className="mt-4 text-center text-sm text-gold/70 underline">
               {BACK_TO_OFFER_LABEL}
