@@ -89,8 +89,13 @@ export const api = {
   showOffer: () => postFunnel("offer/show"),
   retake: () => postFunnel("retake"),
   viewProduct: (product: "book" | "practicum") => postFunnel(`product/${product}/view`),
-  buyProduct: (product: "book" | "practicum") =>
-    request<PurchaseInitiatedOut>(`/api/funnel/product/${product}/buy`, { method: "POST" }),
+  // email обязателен: уходит в чек фискализации ЮKassa (54-ФЗ)
+  buyProduct: (product: "book" | "practicum", email: string) =>
+    request<PurchaseInitiatedOut>(`/api/funnel/product/${product}/buy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }),
   bookConsult: () => postFunnel("consult/book"),
   viewConsult: () => postFunnel("consult/view"),
   goBack: () => postFunnel("back"),

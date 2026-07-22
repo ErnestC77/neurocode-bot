@@ -297,6 +297,10 @@ export const M9_TEXT = "С чего ещё можно начать, выбери
 
 export const BACK_TO_OFFER_LABEL = "← Другие варианты";
 
+// Email перед оплатой — обязателен для чека фискализации (54-ФЗ)
+export const BUY_EMAIL_LABEL = "Куда прислать чек об оплате?";
+export const BUY_EMAIL_INVALID = "Это не похоже на email. Проверь формат: name@example.com";
+
 // Примечания под CTA-кнопками со ссылками на юридические документы
 // (frontend/public/legal/*.html, раздаются статикой с домена Mini App).
 // Акцепт Оферты происходит оплатой, поэтому ссылка обязана быть видна ДО

@@ -15,6 +15,7 @@ async def create_payment(
     secret_key: str,
     amount_rub: int,
     description: str,
+    customer_email: str,
     idempotence_key: str,
     return_url: str,
     metadata: dict[str, Any],
@@ -24,6 +25,11 @@ async def create_payment(
     ``idempotence_key`` — стабильный ключ повторной отправки (используем
     purchase_id): при повторном вызове с тем же ключом ЮKassa не создаст
     дублирующий платёж.
+
+    ``customer_email`` обязателен: боевой магазин с фискализацией (54-ФЗ)
+    отклоняет платёж без чека («Receipt is missing or illegal»), а чек требует
+    контакт покупателя. vat_code 1 — «без НДС» (ИП без НДС); при смене
+    налогового режима поменять код здесь (справочник кодов — в доке ЮKassa).
     """
     payload = {
         "amount": {"value": f"{amount_rub:.2f}", "currency": "RUB"},
@@ -31,6 +37,19 @@ async def create_payment(
         "confirmation": {"type": "redirect", "return_url": return_url},
         "description": description,
         "metadata": metadata,
+        "receipt": {
+            "customer": {"email": customer_email},
+            "items": [
+                {
+                    "description": description,
+                    "quantity": "1.00",
+                    "amount": {"value": f"{amount_rub:.2f}", "currency": "RUB"},
+                    "vat_code": 1,
+                    "payment_subject": "service",
+                    "payment_mode": "full_payment",
+                }
+            ],
+        },
     }
     headers = {"Idempotence-Key": idempotence_key}
     auth = aiohttp.BasicAuth(shop_id, secret_key)

@@ -151,7 +151,10 @@ def test_purchases_returns_joined_user_fields_for_real_purchase(monkeypatch):
         client.post("/api/funnel/consent", headers=headers)
         for q, s in enumerate([2, 2, 0, 1, 0, 2, 1], start=1):
             client.post("/api/funnel/answers", headers=headers, json={"question_no": q, "score": s})
-        buy_response = client.post("/api/funnel/product/practicum/buy", headers=headers)
+        buy_response = client.post(
+            "/api/funnel/product/practicum/buy", headers=headers,
+            json={"email": "buyer@example.com"},
+        )
         assert buy_response.status_code == 200
 
         response = client.get("/api/admin/purchases", headers=headers)

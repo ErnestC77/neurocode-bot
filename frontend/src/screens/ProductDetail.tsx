@@ -1,8 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type FunnelState } from "@/api/client";
 import LegalNote from "@/components/LegalNote";
-import { BACK_TO_OFFER_LABEL, BUY_BUTTON_LABEL, PRODUCT_DETAIL_TEXTS } from "@/content/texts";
+import {
+  BACK_TO_OFFER_LABEL,
+  BUY_BUTTON_LABEL,
+  BUY_EMAIL_INVALID,
+  BUY_EMAIL_LABEL,
+  PRODUCT_DETAIL_TEXTS,
+} from "@/content/texts";
 import { openLink } from "@/lib/telegram";
+
+// То же правило, что services/validation.py::is_valid_email на бэке —
+// клиентская проверка лишь экономит запрос, сервер валидирует повторно (422).
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 type Product = "book" | "practicum";
 
@@ -20,6 +30,8 @@ export default function ProductDetail({ product, price, onPaymentSettled, onBack
   const [waiting, setWaiting] = useState(false);
   const [buying, setBuying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [emailInvalid, setEmailInvalid] = useState(false);
 
   // Guards against the auto-poll effect and handleManualCheck both detecting
   // settlement and firing onPaymentSettled for the same purchase.
@@ -75,10 +87,16 @@ export default function ProductDetail({ product, price, onPaymentSettled, onBack
 
   async function handleBuy() {
     if (buying) return;
+    const trimmed = email.trim();
+    if (!EMAIL_RE.test(trimmed)) {
+      setEmailInvalid(true);
+      return;
+    }
+    setEmailInvalid(false);
     setBuying(true);
     setError(null);
     try {
-      const { confirmation_url } = await api.buyProduct(product);
+      const { confirmation_url } = await api.buyProduct(product, trimmed);
       openLink(confirmation_url);
       setWaiting(true);
     } catch {
@@ -118,9 +136,18 @@ export default function ProductDetail({ product, price, onPaymentSettled, onBack
         </div>
       ) : (
         <>
+          <p className="mt-6 text-sm text-white/70">{BUY_EMAIL_LABEL}</p>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@example.com"
+            className="mt-2 w-full rounded-lg border border-gold/40 bg-white/5 px-4 py-3 text-white placeholder:text-white/40"
+          />
+          {emailInvalid && <p className="mt-2 text-sm text-red-400">{BUY_EMAIL_INVALID}</p>}
           <button
             onClick={handleBuy}
-            className="mt-6 w-full rounded-xl bg-gold py-3 text-center font-semibold text-navy"
+            className="mt-4 w-full rounded-xl bg-gold py-3 text-center font-semibold text-navy"
           >
             {`${BUY_BUTTON_LABEL[product]} за ${price} ₽`}
           </button>

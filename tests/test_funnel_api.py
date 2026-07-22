@@ -176,9 +176,32 @@ def test_buy_product_creates_purchase_and_returns_confirmation_url(monkeypatch):
         client.post("/api/funnel/consent", headers=headers)
         for q, s in enumerate([2, 2, 0, 1, 0, 2, 1], start=1):
             client.post("/api/funnel/answers", headers=headers, json={"question_no": q, "score": s})
-        response = client.post("/api/funnel/product/practicum/buy", headers=headers)
+        response = client.post(
+            "/api/funnel/product/practicum/buy", headers=headers,
+            json={"email": "buyer@example.com"},
+        )
     assert response.status_code == 200
     assert response.json() == {"confirmation_url": "https://yookassa.ru/pay/yk-payment-123"}
+
+
+def test_buy_product_rejects_invalid_email(monkeypatch):
+    called = False
+
+    async def fake_create_payment(**kwargs):
+        nonlocal called
+        called = True
+        return "yk-payment-123", "https://yookassa.ru/pay/yk-payment-123"
+
+    monkeypatch.setattr("api.routers.funnel.create_payment", fake_create_payment)
+
+    client, headers = _client(7130)
+    with client:
+        response = client.post(
+            "/api/funnel/product/book/buy", headers=headers,
+            json={"email": "not-an-email"},
+        )
+    assert response.status_code == 422
+    assert not called
 
 
 def test_consult_book_sets_awaiting_email():

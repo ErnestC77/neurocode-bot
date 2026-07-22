@@ -155,15 +155,20 @@ async def view_product(
 
 @router.post("/product/{product}/buy")
 async def buy_product(
-    product: Literal["book", "practicum"], request: Request,
+    product: Literal["book", "practicum"], body: EmailIn, request: Request,
     tg_id: int = Depends(current_client),
 ) -> PurchaseInitiatedOut:
+    # Email нужен для чека фискализации (54-ФЗ) — без него ЮKassa отклоняет платёж.
+    email = body.email.strip()
+    if not is_valid_email(email):
+        raise HTTPException(status_code=422, detail="invalid_email")
+
     config: Config = request.app.state.config
     amount = await settings.get_int(f"{product}_price_rub")
     purchase = await crud.create_purchase(tg_id, product, amount)
     payment_id, confirmation_url = await create_payment(
         shop_id=await settings.get_str("yookassa_shop_id"), secret_key=config.yookassa_secret_key,
-        amount_rub=amount, description=_PRODUCT_LABELS[product],
+        amount_rub=amount, description=_PRODUCT_LABELS[product], customer_email=email,
         idempotence_key=str(purchase.id), return_url=config.webhook_base_url,
         metadata={"tg_id": tg_id, "product": product, "purchase_id": purchase.id},
     )
